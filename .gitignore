@@ -12,3 +12,7 @@ supabase/.temp/
 .claude/skills/
 .idea
 eval/reports/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
