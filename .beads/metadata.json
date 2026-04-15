@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "gbrain_alt",
+  "project_id": "b0dce183-ce74-4bc1-a471-cc1cdf482ed8"
+}

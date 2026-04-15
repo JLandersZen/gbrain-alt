@@ -11,3 +11,7 @@ bin/
 supabase/.temp/
 .claude/skills/
 .idea
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
