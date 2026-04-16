@@ -16,19 +16,46 @@ describe('extractEntityRefs', () => {
     expect(refs[0].dir).toBe('people');
   });
 
-  test('extracts company links', () => {
-    const content = 'Discussed [Acme Corp](../../companies/acme-corp.md) deal.';
+  test('extracts organization links', () => {
+    const content = 'Discussed [Acme Corp](../../organizations/acme-corp.md) deal.';
     const refs = extractEntityRefs(content, 'meetings/2026/q1.md');
     expect(refs).toHaveLength(1);
     expect(refs[0].name).toBe('Acme Corp');
     expect(refs[0].slug).toBe('acme-corp');
-    expect(refs[0].dir).toBe('companies');
+    expect(refs[0].dir).toBe('organizations');
   });
 
-  test('extracts multiple refs', () => {
-    const content = '[Alice](../people/alice.md) and [Bob](../people/bob.md) from [Acme](../companies/acme.md).';
-    const refs = extractEntityRefs(content, 'meetings/test.md');
+  test('extracts multiple refs from all entity directories', () => {
+    const content = '[Alice](../people/alice.md) and [Bob](../people/bob.md) from [Acme](../organizations/acme.md).';
+    const refs = extractEntityRefs(content, 'events/test.md');
     expect(refs).toHaveLength(3);
+    expect(refs[2].dir).toBe('organizations');
+  });
+
+  test('extracts refs from all 9 entity directories', () => {
+    const content = [
+      '[A](../people/a.md)',
+      '[B](../organizations/b.md)',
+      '[C](../projects/c.md)',
+      '[D](../tasks/d.md)',
+      '[E](../events/e.md)',
+      '[F](../resources/f.md)',
+      '[G](../interests/g.md)',
+      '[H](../contexts/h.md)',
+      '[I](../aors/i.md)',
+    ].join(' ');
+    const refs = extractEntityRefs(content, 'test.md');
+    expect(refs).toHaveLength(9);
+    const dirs = refs.map(r => r.dir);
+    expect(dirs).toContain('people');
+    expect(dirs).toContain('organizations');
+    expect(dirs).toContain('projects');
+    expect(dirs).toContain('tasks');
+    expect(dirs).toContain('events');
+    expect(dirs).toContain('resources');
+    expect(dirs).toContain('interests');
+    expect(dirs).toContain('contexts');
+    expect(dirs).toContain('aors');
   });
 
   test('returns empty for no entity links', () => {

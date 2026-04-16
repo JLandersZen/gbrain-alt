@@ -27,14 +27,15 @@ interface BacklinkGap {
 /** Extract entity references from markdown content (relative links to people/companies) */
 export function extractEntityRefs(content: string, pagePath: string): { name: string; slug: string; dir: string }[] {
   const refs: { name: string; slug: string; dir: string }[] = [];
-  // Match markdown links to brain pages: [Name](../people/slug.md) or [Name](../../companies/slug.md)
-  const linkPattern = /\[([^\]]+)\]\(([^)]*(?:people|companies)\/([^)]+\.md))\)/g;
+  const entityDirs = ['people', 'organizations', 'projects', 'tasks', 'events', 'resources', 'interests', 'contexts', 'aors'];
+  const dirsPattern = entityDirs.join('|');
+  const linkPattern = new RegExp(`\\[([^\\]]+)\\]\\(([^)]*(?:${dirsPattern})\\/([^)]+\\.md))\\)`, 'g');
   let match;
   while ((match = linkPattern.exec(content)) !== null) {
     const name = match[1];
     const fullPath = match[2];
     const slug = match[3].replace('.md', '');
-    const dir = fullPath.includes('people') ? 'people' : 'companies';
+    const dir = entityDirs.find(d => fullPath.includes(d + '/'))!;
     refs.push({ name, slug, dir });
   }
   return refs;

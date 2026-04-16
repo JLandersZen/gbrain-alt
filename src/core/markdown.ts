@@ -123,19 +123,19 @@ export function serializeMarkdown(
 }
 
 function inferType(filePath?: string): PageType {
-  if (!filePath) return 'concept';
+  if (!filePath) return 'resource';
 
-  // Normalize: add leading / for consistent matching
   const lower = ('/' + filePath).toLowerCase();
-  if (lower.includes('/people/') || lower.includes('/person/')) return 'person';
-  if (lower.includes('/companies/') || lower.includes('/company/')) return 'company';
-  if (lower.includes('/deals/') || lower.includes('/deal/')) return 'deal';
-  if (lower.includes('/yc/')) return 'yc';
-  if (lower.includes('/civic/')) return 'civic';
+  if (lower.includes('/contexts/')) return 'context';
+  if (lower.includes('/aors/')) return 'aor';
   if (lower.includes('/projects/') || lower.includes('/project/')) return 'project';
-  if (lower.includes('/sources/') || lower.includes('/source/')) return 'source';
-  if (lower.includes('/media/')) return 'media';
-  return 'concept';
+  if (lower.includes('/tasks/')) return 'task';
+  if (lower.includes('/events/')) return 'event';
+  if (lower.includes('/resources/')) return 'resource';
+  if (lower.includes('/interests/')) return 'interest';
+  if (lower.includes('/people/') || lower.includes('/person/')) return 'person';
+  if (lower.includes('/organizations/')) return 'organization';
+  return 'resource';
 }
 
 function inferTitle(filePath?: string): string {

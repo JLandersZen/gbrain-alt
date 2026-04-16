@@ -4,7 +4,7 @@ import { parseMarkdown, serializeMarkdown, splitBody } from '../src/core/markdow
 describe('Markdown Parser', () => {
   test('parses frontmatter + compiled_truth + timeline', () => {
     const md = `---
-type: concept
+type: resource
 title: Do Things That Don't Scale
 tags: [startups, growth]
 ---
@@ -17,7 +17,7 @@ Paul Graham argues that startups should do unscalable things early on.
 - 2024-11-15: Referenced in batch kickoff talk
 `;
     const parsed = parseMarkdown(md);
-    expect(parsed.type).toBe('concept');
+    expect(parsed.type).toBe('resource');
     expect(parsed.title).toBe("Do Things That Don't Scale");
     expect(parsed.tags).toEqual(['startups', 'growth']);
     expect(parsed.compiled_truth).toContain('unscalable things');
@@ -27,7 +27,7 @@ Paul Graham argues that startups should do unscalable things early on.
 
   test('handles no timeline separator', () => {
     const md = `---
-type: concept
+type: resource
 title: Superlinear Returns
 ---
 
@@ -41,7 +41,7 @@ Performance compounds over time.
 
   test('handles empty body', () => {
     const md = `---
-type: concept
+type: resource
 title: Empty Page
 ---
 `;
@@ -52,7 +52,7 @@ title: Empty Page
 
   test('removes type, title, tags from frontmatter object', () => {
     const md = `---
-type: concept
+type: resource
 title: Test
 tags: [a, b]
 custom_field: hello
@@ -79,13 +79,13 @@ Content
 
   test('infers slug from file path', () => {
     const md = `---
-type: concept
+type: resource
 title: Test
 ---
 Content
 `;
-    const parsed = parseMarkdown(md, 'concepts/do-things-that-dont-scale.md');
-    expect(parsed.slug).toBe('concepts/do-things-that-dont-scale');
+    const parsed = parseMarkdown(md, 'resources/do-things-that-dont-scale.md');
+    expect(parsed.slug).toBe('resources/do-things-that-dont-scale');
   });
 });
 
@@ -115,7 +115,7 @@ describe('splitBody', () => {
 describe('serializeMarkdown', () => {
   test('round-trips through parse and serialize', () => {
     const original = `---
-type: concept
+type: resource
 title: Do Things That Don't Scale
 tags:
   - startups
@@ -150,7 +150,7 @@ Paul Graham argues that startups should do unscalable things early on.
 describe('parseMarkdown edge cases', () => {
   test('handles content with multiple --- separators', () => {
     const md = `---
-type: concept
+type: resource
 title: Test
 ---
 
@@ -196,7 +196,14 @@ Some content.`;
 
   test('infers type from various directory paths', () => {
     expect(parseMarkdown('', 'people/someone.md').type).toBe('person');
-    expect(parseMarkdown('', 'concepts/thing.md').type).toBe('concept');
-    expect(parseMarkdown('', 'companies/acme.md').type).toBe('company');
+    expect(parseMarkdown('', 'resources/thing.md').type).toBe('resource');
+    expect(parseMarkdown('', 'organizations/acme.md').type).toBe('organization');
+    expect(parseMarkdown('', 'contexts/at-work.md').type).toBe('context');
+    expect(parseMarkdown('', 'aors/engineering.md').type).toBe('aor');
+    expect(parseMarkdown('', 'tasks/fix-bug.md').type).toBe('task');
+    expect(parseMarkdown('', 'events/weekly-sync.md').type).toBe('event');
+    expect(parseMarkdown('', 'interests/distributed-systems.md').type).toBe('interest');
+    expect(parseMarkdown('', 'projects/gbrain.md').type).toBe('project');
+    expect(parseMarkdown('', 'unknown/foo.md').type).toBe('resource');
   });
 });
