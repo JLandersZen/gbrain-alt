@@ -142,14 +142,14 @@ type references remain outside of CHANGELOG.md historical entries.
 
 ---
 
-### Slice 1 — E2E Validation
+### Slice 1 — E2E Validation ✅ DONE
 
-After all three sub-slices are committed, run the full E2E test lifecycle
-(spin up pgvector container, run `bun run test:e2e`, tear down) to confirm
-nothing is broken at the integration level. The E2E tests create pages and
-filter by type — since this is a fresh DB (no pre-existing data with old types),
-the only concern is that test fixtures themselves use the new types consistently.
-Fix any issues, commit, push.
+**Completed:** 2026-04-16. All 95 E2E tests + 591 unit tests pass. Beads: `gbrain-alt-x63`.
+
+Ran full E2E test lifecycle using podman (pgvector/pgvector:pg16 container on
+port 5434). Found one count assertion bug: `test/e2e/mechanical.test.ts` expected
+5 resources but the `crustdata-sarah-chen.md` fixture was migrated from `type: source`
+to `type: resource` in Slice 1b, making the correct count 6. Fixed and verified.
 
 ---
 

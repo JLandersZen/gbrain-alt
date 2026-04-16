@@ -85,7 +85,7 @@ describeE2E('E2E: Page CRUD', () => {
     expect(organizations.length).toBe(3); // novamind, threshold-ventures, ohmygreen
 
     const resources = await callOp('list_pages', { type: 'resource' }) as any[];
-    expect(resources.length).toBe(5); // compiled-truth, hybrid-search, RAG, notes-march-2024, big-file
+    expect(resources.length).toBe(6); // compiled-truth, crustdata-sarah-chen, hybrid-search, RAG, notes-march-2024, big-file
   });
 
   test('list_pages tag filter works', async () => {
