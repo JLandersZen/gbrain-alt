@@ -96,26 +96,47 @@ benchmark runs with new entity types.
 
 ---
 
-### Slice 1c — Documentation
+### Slice 1c — Documentation ✅ DONE
+
+**Completed:** 2026-04-16. All 591 tests pass. Beads: `gbrain-alt-0lf`.
 
 **Goal:** All documentation references the new taxonomy. No Garry Tan-specific
 type references remain outside of CHANGELOG.md historical entries.
 
 **Files changed:**
 
-| File | Change | Lines |
-|------|--------|-------|
-| `docs/GBRAIN_RECOMMENDED_SCHEMA.md` | Replace all old type/directory references with new taxonomy. Update directory structure diagram, decision tree, page templates, and examples. Keep all non-taxonomy content (enrichment pipeline, cron architecture, compiled truth pattern, etc.) intact. | ~200 |
-| `skills/_brain-filing-rules.md` | Update filing rules: new directories, new resolver order per spec §2.10 | ~40 |
-| `README.md` | Update type list in schema table, code examples (`concepts/` → `resources/`), architecture description. Replace `company` with `organization` in narrative. | ~30 |
-| `CLAUDE.md` | Update type list in "Database schema" section and any type references in key files descriptions | ~10 |
-| `skills/migrate/SKILL.md` | Update Notion migration section to reference new taxonomy and frontmatter schemas | ~15 |
+| File | Change |
+|------|--------|
+| `docs/GBRAIN_RECOMMENDED_SCHEMA.md` | Full rewrite: directory structure, decision tree, page templates, disambiguation rules, worked examples, architecture diagrams — all updated to PARA+GTD taxonomy. Non-taxonomy content preserved. |
+| `skills/_brain-filing-rules.md` | Decision protocol, misfiling patterns, notability gate, iron law — all updated to new types |
+| `README.md` | 11 edits: type list, code examples, schema table, narrative references |
+| `CLAUDE.md` | Audited — no old type references found, no changes needed |
+| `skills/enrich/SKILL.md` | 8 edits: company→organization in templates and references |
+| `skills/query/SKILL.md` | concepts/ → resources/ in citation example |
+| `skills/publish/SKILL.md` | 7 occurrences of companies/acme → organizations/acme |
+| `skills/setup/SKILL.md` | Updated entity type lists |
+| `skills/ingest/SKILL.md` | Updated all directory references |
+| `skills/maintain/SKILL.md` | Updated directory references |
+| `skills/briefing/SKILL.md` | deal→project throughout |
+| `skills/migrations/v0.9.0.md` | companies/ → organizations/ |
+| `skills/migrations/v0.8.1.md` | Updated directory references |
+| `docs/GBRAIN_V0.md` | concepts/ → resources/, type: concept → type: resource |
+| `docs/designs/HOMEBREW_FOR_PERSONAL_AI.md` | deal-tracker → project-tracker |
+| `docs/guides/originals-folder.md` | concepts/ → resources/ |
+| `docs/guides/entity-detection.md` | companies/ → organizations/, concepts/ → resources/ |
+| `docs/guides/diligence-ingestion.md` | companies/ → organizations/ |
+| `docs/guides/repo-architecture.md` | Full directory tree rewrite to PARA+GTD |
+| `docs/guides/skill-development.md` | media/ → resources/ |
+| `docs/guides/idea-capture.md` | concepts/ → resources/, media/ → resources/ |
+| `docs/guides/content-media.md` | media/ → resources/, sources/ → resources/ |
+| `docs/guides/cron-schedule.md` | deal → project |
+| `docs/guides/brain-agent-loop.md` | deal → project |
+| `docs/guides/enrichment-pipeline.md` | deal → project, company → organization |
 
-**Acceptance:**
-- `grep -rn` for old type names (`deal`, `yc`, `civic`, `concept`, `source`,
-  `media` as page types) finds zero hits outside CHANGELOG.md
-- Documentation decision tree matches spec §2.10
-- README examples use `resources/` not `concepts/`
+**Acceptance:** ✅
+- `grep -rn` for old type names finds zero hits outside CHANGELOG.md ✅
+- Documentation decision tree matches spec §2.10 ✅
+- README examples use `resources/` not `concepts/` ✅
 
 **Commit message pattern:** `docs: update all documentation to PARA+GTD taxonomy`
 

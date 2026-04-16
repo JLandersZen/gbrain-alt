@@ -1,12 +1,12 @@
 # Enrich Skill
 
-Enrich person and company pages from external sources. Scale effort to importance.
+Enrich person and organization pages from external sources. Scale effort to importance.
 
 > **Filing rule:** Read `skills/_brain-filing-rules.md` before creating any new page.
 
 ## Iron Law: Back-Linking (MANDATORY)
 
-Every mention of a person or company with a brain page MUST create a back-link
+Every mention of a person or organization with a brain page MUST create a back-link
 FROM that entity's page TO the page mentioning them. An unlinked mention is a
 broken brain. See `skills/_brain-filing-rules.md` for format.
 
@@ -62,7 +62,7 @@ Scale enrichment to importance. Don't waste API calls on low-value entities.
 
 ### Step 1: Identify entities
 
-Extract people, companies, concepts from the incoming signal.
+Extract people, organizations, concepts from the incoming signal.
 
 ### Step 2: Check brain state
 
@@ -91,7 +91,7 @@ Priority order -- stop when you have enough signal for the entity's tier.
 
 **4a. Brain cross-reference (always, all tiers)**
 - `gbrain search "name"` and `gbrain query "what do we know about name"`
-- Check related pages: company pages for person enrichment and vice versa
+- Check related pages: organization pages for person enrichment and vice versa
 - This is free and often the richest source
 
 **4b. Web research (Tier 1 and 2)**
@@ -215,18 +215,18 @@ Reverse chronological. Every entry has a date and [Source: ...] citation.
 - **YYYY-MM-DD** | Event description [Source: ...]
 ```
 
-#### Company page template
+#### Organization page template
 
 ```markdown
 ---
-title: Company Name
-type: company
+title: Organization Name
+type: organization
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 tags: []
 ---
 
-# Company Name
+# Organization Name
 
 > 1-paragraph executive summary.
 
@@ -244,8 +244,8 @@ Active items, pending decisions, things to track.
 
 ### Step 7: Cross-reference
 
-- Update company pages from person enrichment (and vice versa)
-- Update related project/deal pages if relevant context surfaced
+- Update organization pages from person enrichment (and vice versa)
+- Update related project pages if relevant context surfaced
 - Add back-links from every entity mentioned (MANDATORY)
 - Check index files if the brain uses them
 

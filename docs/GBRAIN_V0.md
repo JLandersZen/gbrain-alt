@@ -18,10 +18,10 @@ There's already a production-grade RAG system (Ruby on Rails, Postgres + pgvecto
 
 ```
 +--------------------------------------------------+
-|  Page: concepts/do-things-that-dont-scale         |
+|  Page: resources/do-things-that-dont-scale         |
 |                                                   |
 |  --- frontmatter (YAML) ---                       |
-|  type: concept                                    |
+|  type: resource                                   |
 |  tags: [startups, growth, pg-essay]               |
 |                                                   |
 |  === COMPILED TRUTH ===                           |
@@ -417,7 +417,7 @@ Each skill is a markdown file that AI agents (Claude Code, OpenClaw) read and fo
 ## CEO scope expansions (accepted for v0)
 
 1. **CLI/MCP parity with drift tests.** Both interfaces are thin wrappers over the engine. Tests assert identical output.
-2. **Smart slug resolution.** Fuzzy matching via pg_trgm for reads. Writes require exact slugs. `gbrain get "dont scale"` resolves to `concepts/do-things-that-dont-scale`.
+2. **Smart slug resolution.** Fuzzy matching via pg_trgm for reads. Writes require exact slugs. `gbrain get "dont scale"` resolves to `resources/do-things-that-dont-scale`.
 3. **Brain health dashboard.** `gbrain health` shows page count, embed coverage, stale pages, orphans, dead links.
 4. **Normalized timeline.** `timeline_entries` table only (no TEXT column). `detail` field supports markdown.
 5. **Page version control.** `page_versions` table stores full snapshots (compiled_truth + frontmatter + links + tags). `gbrain history`, `gbrain diff`, `gbrain revert` commands. Revert re-chunks and re-embeds.

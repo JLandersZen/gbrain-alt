@@ -19,7 +19,7 @@ Answer questions using the brain's knowledge with 3-layer search and synthesis.
 ## Quality Rules
 
 - Never hallucinate. Only answer from brain content.
-- Cite sources: "According to concepts/do-things-that-dont-scale..."
+- Cite sources: "According to resources/do-things-that-dont-scale..."
 - Flag stale results: if a search result shows [STALE], note that the info may be outdated
 - For "who" questions, use backlinks and typed links to find connections
 - For "what happened" questions, use timeline entries

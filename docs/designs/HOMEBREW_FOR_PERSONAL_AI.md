@@ -28,7 +28,7 @@ $ gbrain integrations
   meeting-prep      Brief me before meetings    ACTIVE    next: 9am tomorrow
   entity-enrich     Auto-enrich new contacts    ACTIVE    12 enriched today
   dream-cycle       Overnight brain maintenance ACTIVE    last run: 3am
-  deal-tracker      Alert on deal changes       AVAILABLE
+  project-tracker   Alert on project changes    AVAILABLE
   follow-up-nudge   Remind on stale threads     AVAILABLE
 
   This week: 1,247 signals ingested. Top: email (47%), voice (23%), X (18%).
@@ -112,17 +112,17 @@ Reflexes are recipes that trigger on brain state changes:
 
 ```yaml
 ---
-id: deal-tracker
+id: project-tracker
 category: reflex
 triggers:
   - type: page_updated
-    filter: {type: deal, field: status}
+    filter: {type: project, field: status}
   - type: timeline_entry
-    filter: {source: email, mentions: deal}
+    filter: {source: email, mentions: project}
 action: alert
 ---
 
-When a deal page's status changes or a new email mentions a deal,
+When a project page's status changes or a new email mentions a project,
 alert the user with context from the brain.
 ```
 

@@ -69,10 +69,10 @@ Skills should be **Mutually Exclusive, Collectively Exhaustive**:
 |--------------|-------------|---------|
 | Meeting transcripts | meeting-ingestion | brain/meetings/ pages |
 | Email messages | executive-assistant | brain/people/ timeline entries |
-| X/Twitter posts | x-collector | brain/media/ pages |
+| X/Twitter posts | x-collector | brain/resources/ pages |
 | Person enrichment | enrich | brain/people/ compiled truth |
 | Calendar events | calendar-sync | brain/daily/calendar/ pages |
-| Video/podcast content | media-ingest | brain/media/ pages |
+| Video/podcast content | media-ingest | brain/resources/ pages |
 
 ### Quality Bar Checklist
 

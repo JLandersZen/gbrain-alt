@@ -28,7 +28,7 @@ on user_shares_media(url_or_file):
         analysis = agent_analyze(transcript, user_context)
 
         # Step 3: Create brain page
-        slug = f"media/youtube/{video_slug}"
+        slug = f"resources/{video_slug}"
         gbrain put <slug> --content """
             # {title}
             **Channel:** {channel} | **Date:** {date} | **Link:** {url}
@@ -62,7 +62,7 @@ on user_shares_media(url_or_file):
             "engagement": get_engagement_data(),       # what resonated
         }
 
-        slug = f"media/social/{platform}-{author}-{date}"
+        slug = f"resources/{platform}-{author}-{date}"
         gbrain put <slug> --content """
             # {author}: {topic}
             {agent_analysis_of_full_bundle}
@@ -89,7 +89,7 @@ on user_shares_media(url_or_file):
         content = ocr_if_needed(file) or extract_text(file)
 
         # For books and long-form:
-        slug = f"sources/{document_slug}"
+        slug = f"resources/{document_slug}"
         gbrain put <slug> --content """
             # {title}
             **Author:** {author} | **Date:** {date}
@@ -119,15 +119,15 @@ on user_shares_media(url_or_file):
 ## Tricky Spots
 
 1. **Always FULL transcript, never AI summary.** YouTube's auto-summary and AI-generated summaries lose the texture: who said what, exact phrasing, tone, what was left unsaid. The full diarized transcript is the evidence base. The agent's analysis goes above it.
-2. **The agent's OWN analysis is the value, not regurgitation.** "The video discussed AI safety" is worthless. "Dario made a specific claim about compute scaling that contradicts what Ilya said in the NeurIPS talk -- see media/youtube/ilya-neurips-2025" is useful. The analysis connects the new media to the existing brain.
+2. **The agent's OWN analysis is the value, not regurgitation.** "The video discussed AI safety" is worthless. "Dario made a specific claim about compute scaling that contradicts what Ilya said in the NeurIPS talk -- see resources/ilya-neurips-2025" is useful. The analysis connects the new media to the existing brain.
 3. **Social media is a bundle, not a single tweet.** A tweet without its thread, quoted tweets, linked articles, and engagement context is a fragment. Reconstruct the full context before creating the brain page.
 4. **Cross-references make media pages alive.** A YouTube page without back-links to the people and companies mentioned is a dead archive. Every mentioned entity gets a link and a timeline entry.
-5. **Over time, `media/` becomes a searchable archive.** Every video, podcast, talk, interview, article, and tweet the user has consumed, with the agent's commentary layered on top. This is the memex at full power.
+5. **Over time, `resources/` becomes a searchable archive.** Every video, podcast, talk, interview, article, and tweet the user has consumed, with the agent's commentary layered on top. This is the memex at full power.
 
 ## How to Verify
 
-1. Ingest a YouTube video. Run `gbrain get media/youtube/{slug}`. Confirm the page has: the agent's analysis (not just a summary), key quotes with speaker attribution, and the full diarized transcript.
-2. Run `gbrain get_links media/youtube/{slug}`. Confirm back-links exist to brain pages for every person and company mentioned in the video.
+1. Ingest a YouTube video. Run `gbrain get resources/{slug}`. Confirm the page has: the agent's analysis (not just a summary), key quotes with speaker attribution, and the full diarized transcript.
+2. Run `gbrain get_links resources/{slug}`. Confirm back-links exist to brain pages for every person and company mentioned in the video.
 3. Pick a person mentioned in the video. Run `gbrain get <person_slug>`. Confirm their timeline has a new entry referencing the video with specific context.
 4. Ingest a tweet. Confirm the brain page includes the thread context, linked article summaries, and entity cross-references -- not just the tweet text.
 5. Run `gbrain search "{topic_from_video}"`. Confirm the media page appears in search results (verifies the content is indexed and searchable).

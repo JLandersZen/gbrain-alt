@@ -155,7 +155,7 @@ This replaces grep-based knowledge lookups with structured gbrain queries.
 | Task | Before (grep) | After (gbrain) |
 |------|---------------|-----------------|
 | Find a person | `grep -r "Pedro" brain/` | `gbrain search "Pedro"` |
-| Understand a topic | `grep -rl "deal" brain/ \| head -5 && cat ...` | `gbrain query "what's the status of the deal"` |
+| Understand a topic | `grep -rl "project" brain/ \| head -5 && cat ...` | `gbrain query "what's the status of the project"` |
 | Read a known page | `cat brain/people/pedro.md` | `gbrain get people/pedro` |
 | Find connections | `grep -rl "Brex" brain/ \| xargs grep "Pedro"` | `gbrain query "Pedro Brex relationship"` |
 
@@ -184,7 +184,7 @@ Embeddings can be refreshed later in batch (`gbrain embed --stale`).
 
 | Layer | What it stores | When to use |
 |-------|---------------|-------------|
-| **gbrain** | World knowledge: people, companies, deals, meetings, concepts, media | "Who is Pedro?", "What happened at the board meeting?" |
+| **gbrain** | World knowledge: people, organizations, projects, events, resources | "Who is Pedro?", "What happened at the board meeting?" |
 | **memory_search** | Agent operational state: preferences, decisions, session context | "How does the user like formatting?", "What did we decide about X?" |
 
 Both should be checked. gbrain for facts about the world. memory_search for how
@@ -199,7 +199,7 @@ pipeline, meeting ingestion, cron schedules, and the five operational discipline
 Inject the key patterns into the agent's system context or AGENTS.md:
 
 1. **Brain-agent loop** (Section 2): read before responding, write after learning
-2. **Entity detection** (Section 3): spawn on every message, capture people/companies/ideas
+2. **Entity detection** (Section 3): spawn on every message, capture people/organizations/projects
 3. **Source attribution** (Section 7): every fact needs `[Source: ...]`
 4. **Iron law back-linking** (Section 15.4): every mention links back to the entity page
 

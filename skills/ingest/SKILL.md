@@ -95,7 +95,7 @@ SUBJECT, not by format (see `skills/_brain-filing-rules.md`).
    know about them? Flag connections, contradictions, content opportunities.
 
 **Write to:** appropriate directory per filing rules (about a person -> `people/`,
-about a company -> `companies/`, reusable framework -> `concepts/`, raw data -> `sources/`)
+about an organization -> `organizations/`, reusable framework -> `resources/`, raw data -> `.raw/` sidecars)
 
 ### Videos & Podcasts
 
@@ -111,7 +111,7 @@ about a company -> `companies/`, reusable framework -> `concepts/`, raw data -> 
 5. **HARD RULE:** every video/podcast brain page MUST link to the raw diarized
    transcript. A page without transcript links is incomplete.
 
-**Write to:** `media/videos/` or `media/podcasts/` with back-links to all entities.
+**Write to:** `resources/` (with appropriate sub-path for videos or podcasts) with back-links to all entities.
 
 **Quality bar:**
 - Compelling headline (not "This video discusses...")
@@ -159,11 +159,11 @@ about a company -> `companies/`, reusable framework -> `concepts/`, raw data -> 
    - Create page if person/company is notable and has no page yet
 5. A meeting is NOT fully ingested until all entity pages are updated
 
-**Write to:** `meetings/YYYY-MM-DD-short-description.md`
+**Write to:** `events/YYYY-MM-DD-short-description.md`
 
 **What makes a good meeting page:**
 - Reveals the real crux, not a bullet dump
-- Connects to existing brain pages (people, companies, deals)
+- Connects to existing brain pages (people, organizations, projects)
 - Flags what changed (status, decisions, new info)
 - Names tension or what was left unsaid
 - Captures actual dynamic, not performative summary
@@ -179,8 +179,8 @@ about a company -> `companies/`, reusable framework -> `concepts/`, raw data -> 
 4. Extract entities and update brain pages
 5. Include direct link to the original post (MANDATORY for citations)
 
-**Write to:** `media/x/` for daily aggregation, or entity-specific directories
-if the post is primarily about a person/company.
+**Write to:** `resources/` for daily aggregation, or entity-specific directories
+if the post is primarily about a person/organization.
 
 ## Raw Source Preservation
 

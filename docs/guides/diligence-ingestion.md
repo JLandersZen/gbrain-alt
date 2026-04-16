@@ -26,7 +26,7 @@ CAC, Gross Margin, Unit Economics, ARR. User language like "data room",
 
 **Step 1: Identify the Company.**
 From the document content or filename, identify the company name.
-Check if `brain/companies/{slug}.md` exists.
+Check if `brain/organizations/{slug}.md` exists.
 
 **Step 2: Create Diligence Directory.**
 
@@ -89,7 +89,7 @@ Every diligence directory needs an `index.md`:
 ```
 
 **Step 7: Enrich Company Brain Page.**
-Update `brain/companies/{slug}.md`:
+Update `brain/organizations/{slug}.md`:
 - Add document sources to frontmatter
 - Update compiled truth with key findings
 - Add "See Also" link to diligence directory
@@ -138,7 +138,7 @@ A good diligence page reads like an intelligence assessment:
    or embedding step was missed.
 
 2. **Check the company page cross-reference.** Open
-   `brain/companies/{slug}.md` and verify it links to the diligence directory.
+   `brain/organizations/{slug}.md` and verify it links to the diligence directory.
    The compiled truth section should include key findings from the deck.
 
 3. **Verify index.md has all sections.** Open

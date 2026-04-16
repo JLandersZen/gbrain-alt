@@ -24,13 +24,13 @@ capture_idea(message_text, source_context):
   elif user_synthesis_of_others(message_text):
     destination = "brain/originals/{slug}.md"  // synthesis IS original
   elif world_concept(message_text):
-    destination = "brain/concepts/{slug}.md"
+    destination = "brain/resources/{slug}.md"
   elif product_or_business_idea(message_text):
     destination = "brain/ideas/{slug}.md"
   elif ghostwritten_by_user(message_text):
     destination = "brain/originals/{slug}.md"  // note ghostwriter in metadata
   elif article_about_user(message_text):
-    destination = "brain/media/writings/{slug}.md"
+    destination = "brain/resources/{slug}.md"
 
   // 2. CAPTURE WITH EXACT PHRASING — never paraphrase
   page = create_or_update(destination, {
@@ -65,10 +65,10 @@ capture_idea(message_text, source_context):
 |--------|-------------|
 | User generated the idea | `brain/originals/{slug}.md` |
 | User's unique synthesis of others' ideas | `brain/originals/` (the synthesis is original) |
-| World concept someone else coined | `brain/concepts/{slug}.md` |
+| Reference material or framework | `brain/resources/{slug}.md` |
 | Product or business idea | `brain/ideas/{slug}.md` |
 | User's ghostwritten book/essay | `brain/originals/` (note ghostwriter in metadata) |
-| Article ABOUT user | `brain/media/writings/` |
+| Article ABOUT user | `brain/resources/` |
 
 ### Capture Standards
 
@@ -157,7 +157,7 @@ search enrichment. No stubs. If you make a page, make it good.
 ## Tricky Spots
 
 1. **Synthesis IS original.** When the user connects two existing ideas in a
-   new way, that synthesis belongs in `brain/originals/`, not `brain/concepts/`.
+   new way, that synthesis belongs in `brain/originals/`, not `brain/resources/`.
    The novel combination is the insight, even if the component ideas aren't new.
 
 2. **Exact phrasing is non-negotiable.** Never paraphrase, summarize, or

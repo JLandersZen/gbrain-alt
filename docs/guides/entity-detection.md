@@ -52,7 +52,7 @@ If yes:
     than "tension between ambition and mortality"
   - Include [Source: ...] citation with full context
 
-If the idea references a world concept: brain/concepts/{slug}.md
+If the idea references a world concept: brain/resources/{slug}.md
 If it's a product/business idea: brain/ideas/{slug}.md
 
 STEP 2 — ENTITIES:
@@ -116,11 +116,10 @@ is_notable(entity):
 |--------|-------------|
 | User generated the idea | `brain/originals/{slug}.md` |
 | User's synthesis of others' ideas | `brain/originals/` (the synthesis is original) |
-| World concept someone else coined | `brain/concepts/{slug}.md` |
+| Reference material or framework | `brain/resources/{slug}.md` |
 | Product or business idea | `brain/ideas/{slug}.md` |
 | Person mentioned | `brain/people/{slug}.md` |
-| Company mentioned | `brain/companies/{slug}.md` |
-| Media referenced | `brain/media/{type}/{slug}.md` |
+| Organization mentioned | `brain/organizations/{slug}.md` |
 
 ### The Iron Law of Back-Linking
 
@@ -169,7 +168,7 @@ to Pedro" only works if Pedro's page links back to every mention.
 
 1. **Send a message mentioning a person.** Say "I had coffee with Sarah Chen
    from Acme Corp today." Verify: brain/people/sarah-chen.md was created or
-   updated, brain/companies/acme-corp.md was created or updated, both have
+   updated, brain/organizations/acme-corp.md was created or updated, both have
    timeline entries with today's date.
 
 2. **Send a message with an original idea.** Say "What if we could distribute

@@ -35,10 +35,10 @@ Check that the back-linking iron law is being followed:
 
 ### Filing rule violations
 Check for common misfiling patterns (see `skills/_brain-filing-rules.md`):
-- Content with clear primary subjects filed in `sources/` instead of the
-  appropriate directory (people/, companies/, concepts/, etc.)
-- Use gbrain search to find pages in `sources/` that reference specific
-  people, companies, or concepts -- these may be misfiled
+- Content with clear primary subjects filed in `resources/` instead of the
+  appropriate directory (people/, organizations/, resources/, etc.)
+- Use gbrain search to find pages in `resources/` that reference specific
+  people, organizations, or other entities -- these may be misfiled
 - Flag misfiled pages for review or re-filing
 
 ### Citation audit

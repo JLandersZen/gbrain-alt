@@ -65,7 +65,7 @@ on enrich(entity, trigger):
     # Step 7: Cross-reference the graph
     gbrain add_link <person_slug> <company_slug>       # person -> company
     gbrain add_link <company_slug> <person_slug>       # company -> person
-    gbrain add_link <person_slug> <deal_slug>          # person -> deal
+    gbrain add_link <person_slug> <project_slug>        # person -> project
     # Every entity page links to every other entity page that references it
 
 # People page sections (not a LinkedIn profile -- a living portrait):
@@ -95,7 +95,7 @@ on enrich(entity, trigger):
 
 1. Enrich a Tier 1 person. Run `gbrain get <slug>` and confirm the page has Executive Summary, State, What They Believe, Contact, and Timeline sections populated from multiple sources.
 2. Run `gbrain get_raw_data <slug>`. Confirm raw API responses are stored with `sources.{provider}.fetched_at` timestamps.
-3. Run `gbrain get_links <slug>`. Confirm cross-reference links exist to the person's company page, deal pages, and related entities.
+3. Run `gbrain get_links <slug>`. Confirm cross-reference links exist to the person's organization page, project pages, and related entities.
 4. Check a page that was enriched AND has a user-written Assessment. Confirm the Assessment section was preserved, not overwritten by API data.
 5. Try to re-enrich the same person. Confirm the system checks the `fetched_at` timestamp and skips if less than a week old.
 

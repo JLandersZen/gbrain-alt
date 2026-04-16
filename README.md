@@ -47,7 +47,7 @@ SET UP THE BRAIN:
   brain repo: mkdir -p ~/brain && cd ~/brain && git init
 
   Read ~/gbrain/docs/GBRAIN_RECOMMENDED_SCHEMA.md — set up the MECE
-  directory structure (people/, companies/, concepts/, etc.) inside the
+  directory structure (people/, organizations/, resources/, etc.) inside the
   user's brain repo, NOT inside ~/gbrain.
 
   gbrain import ~/brain/ --no-embed     # import markdown files
@@ -113,7 +113,7 @@ Most tools help you find things. GBrain makes you smarter over time.
 
 ```
 Signal arrives (meeting, email, tweet, link)
-  → Agent detects entities (people, companies, ideas)
+  → Agent detects entities (people, organizations, resources)
   → READ: check the brain first (gbrain search, gbrain get)
   → Respond with full context
   → WRITE: update brain pages with new information
@@ -157,7 +157,7 @@ in 30 minutes. 25 production patterns from a real deployment included.
 
 ## How this happened
 
-I was setting up my [OpenClaw](https://openclaw.ai) agent and started a markdown brain repo. One page per person, one page per company, compiled truth on top, append-only timeline on the bottom. The agent got smarter the more it knew, so I kept feeding it. Within a week I had 10,000+ markdown files, 3,000+ people with compiled dossiers, 13 years of calendar data, 280+ meeting transcripts, and 300+ captured original ideas.
+I was setting up my [OpenClaw](https://openclaw.ai) agent and started a markdown brain repo. One page per person, one page per organization, compiled truth on top, append-only timeline on the bottom. The agent got smarter the more it knew, so I kept feeding it. Within a week I had 10,000+ markdown files, 3,000+ people with compiled dossiers, 13 years of calendar data, 280+ meeting transcripts, and 300+ captured original ideas.
 
 The agent runs while I sleep. The dream cycle scans every conversation, enriches missing entities, fixes broken citations, and consolidates memory. I wake up and the brain is smarter than when I went to sleep. See the [cron schedule guide](docs/guides/cron-schedule.md) for setup.
 
@@ -190,7 +190,7 @@ The numbers above aren't theoretical. They come from a real deployment documente
 **Read the skillpack.** It's the most important doc in this repo. It tells your agent HOW to use gbrain, not just what commands exist:
 
 - **The brain-agent loop** — the read-write cycle that makes knowledge compound
-- **Entity detection** — spawn on every message, capture people/companies/original ideas
+- **Entity detection** — spawn on every message, capture people, organizations, projects
 - **Enrichment pipeline** — 7-step protocol with tiered API spend
 - **Meeting ingestion** — transcript to brain pages with entity propagation
 - **Source attribution** — every fact traceable to where it came from
@@ -200,7 +200,7 @@ Without the skillpack, your agent has tools but no playbook. With it, the agent 
 
 ## How gbrain fits with OpenClaw/Hermes
 
-GBrain is world knowledge — people, companies, deals, meetings, concepts, your original thinking. It's the long-term memory of what you know about the world.
+GBrain is world knowledge — people, organizations, projects, meetings, resources, your original thinking. It's the long-term memory of what you know about the world.
 
 [OpenClaw](https://openclaw.ai) agent memory (`memory_search`) is operational state — preferences, decisions, session context, how the agent should behave.
 
@@ -208,7 +208,7 @@ They're complementary:
 
 | Layer | What it stores | How to query |
 |-------|---------------|-------------|
-| **gbrain** | People, companies, meetings, ideas, media | `gbrain search`, `gbrain query`, `gbrain get` |
+| **gbrain** | People, organizations, projects, meetings, resources | `gbrain search`, `gbrain query`, `gbrain get` |
 | **Agent memory** | Preferences, decisions, operational config | `memory_search` |
 | **Session context** | Current conversation | (automatic) |
 
@@ -218,7 +218,7 @@ All three should be checked. GBrain for facts about the world. Memory for agent 
 
 The real value isn't search. It's what happens after a few weeks of use.
 
-You take a meeting with someone. The agent writes a brain page for them, links it to their company, tags it with the deal. Next week someone mentions that company in a different context. The agent already has the full picture: who you talked to, what you discussed, what threads are open. You didn't do anything. The brain already had it.
+You take a meeting with someone. The agent writes a brain page for them, links it to their organization, tags it with the project. Next week someone mentions that organization in a different context. The agent already has the full picture: who you talked to, what you discussed, what threads are open. You didn't do anything. The brain already had it.
 
 ## Install
 
@@ -351,8 +351,8 @@ const results = await engine.searchKeyword('startup growth');
 const page = await engine.getPage('people/pedro-franceschi');
 
 // Write
-await engine.putPage('concepts/superlinear-returns', {
-  type: 'concept',
+await engine.putPage('resources/superlinear-returns', {
+  type: 'resource',
   title: 'Superlinear Returns',
   compiled_truth: 'Paul Graham argues that returns in many fields are superlinear...',
   timeline: '- 2023-10-01: Published on paulgraham.com',
@@ -442,7 +442,7 @@ Every page in the brain follows the compiled truth + timeline pattern:
 
 ```markdown
 ---
-type: concept
+type: resource
 title: Do Things That Don't Scale
 tags: [startups, growth, pg-essay]
 ---
@@ -515,8 +515,9 @@ Search quality is benchmarked: 29 fictional pages, 20 queries, graded relevance.
 
 ```
 pages                    The core content table
-  slug (UNIQUE)          e.g. "concepts/do-things-that-dont-scale"
-  type                   person, company, deal, yc, civic, project, concept, source, media
+  slug (UNIQUE)          e.g. "resources/do-things-that-dont-scale"
+  type                   Default set: context, aor, project, task, event, resource, interest, person, organization
+                         (TEXT column, unconstrained — use any value)
   title, compiled_truth, timeline
   frontmatter (JSONB)    Arbitrary metadata
   search_vector          Trigger-based tsvector (title + compiled_truth + timeline + timeline_entries)
@@ -642,7 +643,7 @@ Fat markdown files that tell AI agents HOW to use gbrain. No skill logic in the 
 | **query** | 3-layer search (keyword + vector + structured) with synthesis and citations. Says "the brain doesn't have info on X" rather than hallucinating. |
 | **maintain** | Periodic health: find contradictions, stale compiled truth, orphan pages, dead links, tag inconsistency, missing embeddings, overdue threads. |
 | **enrich** | Enrich pages from external APIs. Raw data stored separately, distilled highlights go to compiled truth. |
-| **briefing** | Daily briefing: today's meetings with participant context, active deals with deadlines, time-sensitive threads, recent changes. |
+| **briefing** | Daily briefing: today's meetings with participant context, active projects with deadlines, time-sensitive threads, recent changes. |
 | **migrate** | Universal migration from Obsidian (wikilinks to gbrain links), Notion (stripped UUIDs), Logseq (block refs), plain markdown, CSV, JSON, Roam. |
 | **setup** | Set up GBrain from scratch: auto-provision Supabase via CLI, AGENTS.md injection, import, sync. Target TTHW < 2 min. |
 

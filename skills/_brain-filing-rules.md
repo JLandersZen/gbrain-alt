@@ -7,7 +7,7 @@ not the source, not the skill that's running.
 
 ## Decision Protocol
 
-1. Identify the primary subject (a person? company? concept? policy issue?)
+1. Identify the primary subject (a person? organization? project? task? event?)
 2. File in the directory that matches the subject
 3. Cross-link from related directories
 4. When in doubt: what would you search for to find this page again?
@@ -16,35 +16,39 @@ not the source, not the skill that's running.
 
 | Wrong | Right | Why |
 |-------|-------|-----|
-| Analysis of a topic -> `sources/` | -> appropriate subject directory | sources/ is for raw data only |
-| Article about a person -> `sources/` | -> `people/` | Primary subject is a person |
-| Meeting-derived company info -> `meetings/` only | -> ALSO update `companies/` | Entity propagation is mandatory |
-| Research about a company -> `sources/` | -> `companies/` | Primary subject is a company |
-| Reusable framework/thesis -> `sources/` | -> `concepts/` | It's a mental model |
-| Tweet thread about policy -> `media/` | -> `civic/` or `concepts/` | media/ is for content ops |
+| Analysis of a topic -> wrong dir | -> `resources/` | resources/ is for reference material |
+| Article about a person -> `resources/` | -> `people/` | Primary subject is a person |
+| Meeting-derived org info -> `events/` only | -> ALSO update `organizations/` | Entity propagation is mandatory |
+| Research about an org -> `resources/` | -> `organizations/` | Primary subject is an organization |
+| Reusable framework/thesis -> wrong dir | -> `resources/` | It's reference material |
+| Calendar event notes -> `resources/` | -> `events/` | Primary subject is an event |
 
-## What `sources/` Is Actually For
+## What `resources/` Catches
 
-`sources/` is ONLY for:
-- Bulk data imports (API dumps, CSV exports, snapshots)
-- Raw data that feeds multiple brain pages (e.g., a guest export, contact sync)
-- Periodic captures (quarterly snapshots, sync exports)
+`resources/` is the catch-all for reference material that doesn't belong to a
+more specific type. This includes:
+- Documents, articles, and notes without a clear entity subject
+- Reusable frameworks, theses, and mental models
+- Research material, how-tos, and collected references
 
-If the content has a clear primary subject (a person, company, concept, policy
-issue), it does NOT go in sources/. Period.
+Raw data imports (API dumps, CSV exports, snapshots) go in `.raw/` sidecar
+directories alongside the brain page they feed, not in resources/.
+
+If the content has a clear primary subject (a person, organization, project,
+event), it does NOT go in resources/. Period.
 
 ## Notability Gate
 
 Not everything deserves a brain page. Before creating a new entity page:
 - **People:** Will you interact with them again? Are they relevant to your work?
-- **Companies:** Are they relevant to your work or interests?
-- **Concepts:** Is this a reusable mental model worth referencing later?
+- **Organizations:** Are they relevant to your work or interests?
+- **Resources:** Is this reusable reference material worth finding later?
 - **When in doubt, DON'T create.** A missing page can be created later.
   A junk page wastes attention and degrades search quality.
 
 ## Iron Law: Back-Linking (MANDATORY)
 
-Every mention of a person or company with a brain page MUST create a back-link
+Every mention of a person or organization with a brain page MUST create a back-link
 FROM that entity's page TO the page mentioning them. This is bidirectional:
 the new page links to the entity, AND the entity's page links back.
 

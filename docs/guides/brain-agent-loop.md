@@ -7,7 +7,7 @@ better. The loop compounds daily.
 
 ## What the User Gets
 
-Without this: the agent answers from stale context. You discuss a deal on Monday,
+Without this: the agent answers from stale context. You discuss a project on Monday,
 and by Friday the agent has forgotten. Every conversation starts from zero.
 
 With this: six months in, the agent knows more about your world than you can hold

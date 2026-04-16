@@ -11,7 +11,7 @@ Compile a daily briefing from brain context.
    - Search gbrain for each participant by name
    - Read their pages from gbrain for compiled_truth context
    - Summarize: who they are, recent timeline, relationship to you
-2. **Active deals.** List deal pages in gbrain filtered to active status:
+2. **Active projects.** List project pages in gbrain filtered to active status:
    - Deadlines approaching in the next 7 days
    - Recent timeline entries (last 7 days)
 3. **Time-sensitive threads.** Open items from timeline entries:
@@ -46,7 +46,7 @@ Before drafting or triaging any email:
 ### Daily briefing queries
 
 Run these queries to populate the briefing sections:
-- `gbrain query "active deals status"` -- deal pipeline snapshot
+- `gbrain query "active projects status"` -- project pipeline snapshot
 - `gbrain query "meetings this week"` -- recent meeting pages with insights
 - `gbrain query "pending commitments follow-ups"` -- open threads and action items
 - `gbrain search --type person --sort updated --limit 10` -- people in play
@@ -61,8 +61,8 @@ MEETINGS TODAY
 - [time] [meeting name]
   Participants: [name] (slug: people/name, [key context])
 
-ACTIVE DEALS
-- [deal name] -- [status], deadline: [date]
+ACTIVE PROJECTS
+- [project name] -- [status], deadline: [date]
   Recent: [latest timeline entry]
 
 ACTION ITEMS

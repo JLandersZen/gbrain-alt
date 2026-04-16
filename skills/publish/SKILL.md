@@ -11,7 +11,7 @@ for the architecture philosophy.
 ## When to Publish
 
 - User asks to share a brain page, create a shareable link, or says "give me a page"
-- User wants to send a deal memo, person briefing, or research to someone external
+- User wants to send a project briefing, person briefing, or research to someone external
 - User asks to publish a data room analysis or trip plan
 - Any time brain content needs to leave the brain without exposing the whole system
 
@@ -27,19 +27,19 @@ channel than the URL.
 
 ```bash
 # Basic publish (outputs local HTML file)
-gbrain publish brain/companies/acme.md
+gbrain publish brain/organizations/acme.md
 
 # Password protected (auto-generate password)
-gbrain publish brain/companies/acme.md --password
+gbrain publish brain/organizations/acme.md --password
 
 # Password protected (specific password)
-gbrain publish brain/companies/acme.md --password "secret123"
+gbrain publish brain/organizations/acme.md --password "secret123"
 
 # Custom title
-gbrain publish brain/companies/acme.md --password --title "Acme -- Deal Analysis"
+gbrain publish brain/organizations/acme.md --password --title "Acme -- Deal Analysis"
 
 # Custom output path
-gbrain publish brain/companies/acme.md --out /tmp/acme-share.html
+gbrain publish brain/organizations/acme.md --out /tmp/acme-share.html
 ```
 
 ## What Gets Stripped
@@ -71,7 +71,7 @@ Share the HTML file via email, Slack, Airdrop. Share the password separately.
 
 ```bash
 # Publish locally first
-gbrain publish brain/companies/acme.md --password "secret" --out /tmp/acme.html
+gbrain publish brain/organizations/acme.md --password "secret" --out /tmp/acme.html
 
 # Upload to Supabase Storage
 gbrain files upload /tmp/acme.html --page shares/acme
@@ -112,7 +112,7 @@ not present anywhere in the file.
 
 Re-run the publish command with the same output path:
 ```bash
-gbrain publish brain/companies/acme.md --password "same-password" --out shares/acme.html
+gbrain publish brain/organizations/acme.md --password "same-password" --out shares/acme.html
 ```
 
 Same file, same URL (if hosted), updated content.
