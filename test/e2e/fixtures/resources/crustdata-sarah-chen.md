@@ -1,5 +1,5 @@
 ---
-type: source
+type: resource
 title: "Crustdata: Sarah Chen"
 tags:
   - raw-data

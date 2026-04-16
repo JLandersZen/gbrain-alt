@@ -1,5 +1,5 @@
 ---
-type: concept
+type: resource
 title: March 2024 Notes
 tags: [notes, monthly]
 ---

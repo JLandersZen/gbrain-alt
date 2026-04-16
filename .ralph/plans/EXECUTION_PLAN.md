@@ -56,7 +56,9 @@ gbrain-alt. Three sub-slices, each independently committable.
 
 ---
 
-### Slice 1b — Remaining Tests + Benchmark
+### Slice 1b — Remaining Tests + Benchmark ✅ DONE
+
+**Completed:** 2026-04-16. All 591 tests pass. Beads: `gbrain-alt-2in`.
 
 **Goal:** All test files use the new types. Full `bun test` passes. Search quality
 benchmark runs with new entity types.
@@ -75,11 +77,20 @@ benchmark runs with new entity types.
 | `test/e2e/search-quality.test.ts` | type values in search quality fixtures |
 | `test/benchmark-search-quality.ts` | 40+ page definitions — types, slugs, directory prefixes |
 
+**Additional files changed** (discovered during implementation):
+
+| File | Old types found |
+|------|-----------------|
+| `test/import-file.test.ts` | `concept` types and `concepts/` slug paths in import test fixtures |
+| `test/publish.test.ts` | `companies/` directory reference in test content |
+| `test/e2e/sync.test.ts` | `concept` types and `concepts/` directory in sync test repo setup |
+| `test/e2e/fixtures/` | Renamed directories: `companies/`→`organizations/`, `concepts/`→`resources/`, `deals/`→`events/`, `sources/` merged into `resources/`. Updated all frontmatter `type:` values. |
+
 **Acceptance:**
-- `bun test` passes (all unit + inline E2E test files)
-- `bun run test/benchmark-search-quality.ts` completes without type errors
+- `bun test` passes (all unit + inline E2E test files) ✅
+- `bun run test/benchmark-search-quality.ts` completes without type errors ✅
 - No references to `deal`, `yc`, `civic`, `concept`, `source`, or `media` as
-  literal type values in any test file (excluding comments about the migration)
+  literal type values in any test file (excluding comments about the migration) ✅
 
 **Commit message pattern:** `test: update all test fixtures to PARA+GTD types`
 

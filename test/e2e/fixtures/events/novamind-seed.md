@@ -1,5 +1,5 @@
 ---
-type: deal
+type: event
 title: NovaMind Seed Round
 tags:
   - seed

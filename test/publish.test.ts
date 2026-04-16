@@ -49,7 +49,7 @@ describe('makeShareable', () => {
   });
 
   test('removes See also lines', () => {
-    const input = '# Title\n\nContent.\n\n- See also: ../companies/acme.md\n\nMore content.';
+    const input = '# Title\n\nContent.\n\n- See also: ../organizations/acme.md\n\nMore content.';
     const result = makeShareable(input);
     expect(result).not.toContain('See also');
     expect(result).toContain('More content');

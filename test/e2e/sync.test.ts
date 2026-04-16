@@ -34,7 +34,7 @@ function createTestRepo(): string {
 
   // Create initial structure
   mkdirSync(join(dir, 'people'), { recursive: true });
-  mkdirSync(join(dir, 'concepts'), { recursive: true });
+  mkdirSync(join(dir, 'resources'), { recursive: true });
 
   writeFileSync(join(dir, 'people/alice.md'), [
     '---',
@@ -50,9 +50,9 @@ function createTestRepo(): string {
     '- 2026-01-15: Joined Acme Corp',
   ].join('\n'));
 
-  writeFileSync(join(dir, 'concepts/testing.md'), [
+  writeFileSync(join(dir, 'resources/testing.md'), [
     '---',
-    'type: concept',
+    'type: resource',
     'title: Testing Philosophy',
     'tags: [engineering]',
     '---',
@@ -100,7 +100,7 @@ describeE2E('E2E: Git-to-DB Sync Pipeline', () => {
     expect(alice).not.toBeNull();
     expect(alice!.title).toBe('Alice Smith');
 
-    const testing = await engine.getPage('concepts/testing');
+    const testing = await engine.getPage('resources/testing');
     expect(testing).not.toBeNull();
     expect(testing!.title).toBe('Testing Philosophy');
   });
@@ -291,7 +291,7 @@ describeE2E('E2E: Git-to-DB Sync Pipeline', () => {
     // performFullSync delegates to runImport — verify pages exist instead
     const alice = await engine.getPage('people/alice');
     expect(alice).not.toBeNull();
-    const testing = await engine.getPage('concepts/testing');
+    const testing = await engine.getPage('resources/testing');
     expect(testing).not.toBeNull();
   });
 
@@ -300,9 +300,9 @@ describeE2E('E2E: Git-to-DB Sync Pipeline', () => {
     const engine = getEngine();
 
     // Add a new file
-    writeFileSync(join(repoPath, 'concepts/dry-run-test.md'), [
+    writeFileSync(join(repoPath, 'resources/dry-run-test.md'), [
       '---',
-      'type: concept',
+      'type: resource',
       'title: Dry Run Test',
       '---',
       '',
@@ -321,7 +321,7 @@ describeE2E('E2E: Git-to-DB Sync Pipeline', () => {
     expect(result.added).toBe(1);
 
     // Page should NOT exist in DB
-    const page = await engine.getPage('concepts/dry-run-test');
+    const page = await engine.getPage('resources/dry-run-test');
     expect(page).toBeNull();
 
     // Clean up: do a real sync so the commit is consumed

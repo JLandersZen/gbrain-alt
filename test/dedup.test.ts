@@ -12,7 +12,7 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
     slug: 'test-page',
     page_id: 1,
     title: 'Test',
-    type: 'concept',
+    type: 'resource',
     chunk_text: 'unique chunk text ' + Math.random(),
     chunk_source: 'compiled_truth',
     chunk_id: Math.floor(Math.random() * 10000),
@@ -53,12 +53,12 @@ describe('dedupResults', () => {
         makeResult({ slug: `p${i}`, page_id: i, score: 1 - i * 0.05, type: 'person', chunk_text: `person ${i} unique text content here` })
       ),
       ...Array.from({ length: 4 }, (_, i) =>
-        makeResult({ slug: `c${i}`, page_id: 100 + i, score: 0.4 - i * 0.05, type: 'concept', chunk_text: `concept ${i} unique text content here` })
+        makeResult({ slug: `c${i}`, page_id: 100 + i, score: 0.4 - i * 0.05, type: 'resource', chunk_text: `concept ${i} unique text content here` })
       ),
     ];
     const deduped = dedupResults(results);
     const personCount = deduped.filter(r => r.type === 'person').length;
-    const conceptCount = deduped.filter(r => r.type === 'concept').length;
+    const conceptCount = deduped.filter(r => r.type === 'resource').length;
     // With diversity enforcement, person shouldn't completely dominate
     expect(personCount).toBeGreaterThan(0);
     expect(conceptCount).toBeGreaterThan(0);

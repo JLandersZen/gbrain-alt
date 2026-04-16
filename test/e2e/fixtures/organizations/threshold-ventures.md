@@ -1,5 +1,5 @@
 ---
-type: company
+type: organization
 title: Threshold Ventures
 tags:
   - vc

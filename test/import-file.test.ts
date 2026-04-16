@@ -40,7 +40,7 @@ describe('importFile', () => {
   test('imports a valid markdown file', async () => {
     const filePath = join(TMP, 'test-page.md');
     writeFileSync(filePath, `---
-type: concept
+type: resource
 title: Test Page
 tags: [alpha, beta]
 ---
@@ -53,17 +53,17 @@ This is the compiled truth.
 `);
 
     const engine = mockEngine();
-    const result = await importFile(engine, filePath, 'concepts/test-page.md', { noEmbed: true });
+    const result = await importFile(engine, filePath, 'resources/test-page.md', { noEmbed: true });
 
     expect(result.status).toBe('imported');
-    expect(result.slug).toBe('concepts/test-page');
+    expect(result.slug).toBe('resources/test-page');
     expect(result.chunks).toBeGreaterThan(0);
 
     // Verify engine was called correctly
     const calls = (engine as any)._calls;
     const putCall = calls.find((c: any) => c.method === 'putPage');
     expect(putCall).toBeTruthy();
-    expect(putCall.args[0]).toBe('concepts/test-page');
+    expect(putCall.args[0]).toBe('resources/test-page');
 
     // Tags were added
     const tagCalls = calls.filter((c: any) => c.method === 'addTag');
@@ -135,7 +135,7 @@ Legit content.
     // The common case: no frontmatter.slug, so the path determines the slug.
     const filePath = join(TMP, 'concept-path.md');
     writeFileSync(filePath, `---
-type: concept
+type: resource
 title: From Path
 ---
 
@@ -143,10 +143,10 @@ Content.
 `);
 
     const engine = mockEngine();
-    const result = await importFile(engine, filePath, 'concepts/from-path.md', { noEmbed: true });
+    const result = await importFile(engine, filePath, 'resources/from-path.md', { noEmbed: true });
 
     expect(result.status).toBe('imported');
-    expect(result.slug).toBe('concepts/from-path');
+    expect(result.slug).toBe('resources/from-path');
   });
 
   test('skips symlinks in importFromFile (defense-in-depth)', async () => {
@@ -154,7 +154,7 @@ Content.
     // should catch it and return skipped.
     const realFile = join(TMP, 'real-target.md');
     writeFileSync(realFile, `---
-type: concept
+type: resource
 title: Real
 ---
 
@@ -175,7 +175,7 @@ Content.
   test('skips file when content hash matches (idempotent)', async () => {
     const filePath = join(TMP, 'unchanged.md');
     writeFileSync(filePath, `---
-type: concept
+type: resource
 title: Unchanged
 ---
 
@@ -186,13 +186,13 @@ Same content.
     const { createHash } = await import('crypto');
     const { parseMarkdown } = await import('../src/core/markdown.ts');
     const content = `---
-type: concept
+type: resource
 title: Unchanged
 ---
 
 Same content.
 `;
-    const parsed = parseMarkdown(content, 'concepts/unchanged.md');
+    const parsed = parseMarkdown(content, 'resources/unchanged.md');
     const hash = createHash('sha256')
       .update(JSON.stringify({
         title: parsed.title,
@@ -208,7 +208,7 @@ Same content.
       getPage: () => Promise.resolve({ content_hash: hash }),
     });
 
-    const result = await importFile(engine, filePath, 'concepts/unchanged.md', { noEmbed: true });
+    const result = await importFile(engine, filePath, 'resources/unchanged.md', { noEmbed: true });
     expect(result.status).toBe('skipped');
 
     const calls = (engine as any)._calls;
@@ -219,7 +219,7 @@ Same content.
   test('reconciles tags: removes old, adds new', async () => {
     const filePath = join(TMP, 'retag.md');
     writeFileSync(filePath, `---
-type: concept
+type: resource
 title: Retagged
 tags: [new-tag, kept-tag]
 ---
@@ -232,7 +232,7 @@ Content here.
       getPage: () => Promise.resolve(null),
     });
 
-    await importFile(engine, filePath, 'concepts/retag.md', { noEmbed: true });
+    await importFile(engine, filePath, 'resources/retag.md', { noEmbed: true });
 
     const calls = (engine as any)._calls;
     const removeCalls = calls.filter((c: any) => c.method === 'removeTag');
@@ -246,7 +246,7 @@ Content here.
   test('chunks compiled_truth and timeline separately', async () => {
     const filePath = join(TMP, 'chunked.md');
     writeFileSync(filePath, `---
-type: concept
+type: resource
 title: Chunked
 ---
 
@@ -258,7 +258,7 @@ This is compiled truth content that should be chunked as compiled_truth source.
 `);
 
     const engine = mockEngine();
-    const result = await importFile(engine, filePath, 'concepts/chunked.md', { noEmbed: true });
+    const result = await importFile(engine, filePath, 'resources/chunked.md', { noEmbed: true });
 
     expect(result.status).toBe('imported');
     expect(result.chunks).toBeGreaterThanOrEqual(2);
@@ -276,7 +276,7 @@ This is compiled truth content that should be chunked as compiled_truth source.
   test('handles file with minimal content', async () => {
     const filePath = join(TMP, 'minimal.md');
     writeFileSync(filePath, `---
-type: concept
+type: resource
 title: Minimal
 ---
 
@@ -284,7 +284,7 @@ One line.
 `);
 
     const engine = mockEngine();
-    const result = await importFile(engine, filePath, 'concepts/minimal.md', { noEmbed: true });
+    const result = await importFile(engine, filePath, 'resources/minimal.md', { noEmbed: true });
 
     expect(result.status).toBe('imported');
     expect(result.chunks).toBeGreaterThanOrEqual(1);
@@ -293,7 +293,7 @@ One line.
   test('skips chunking for empty timeline', async () => {
     const filePath = join(TMP, 'empty-tl.md');
     writeFileSync(filePath, `---
-type: concept
+type: resource
 title: No Timeline
 ---
 
@@ -301,7 +301,7 @@ Just compiled truth, no timeline separator.
 `);
 
     const engine = mockEngine();
-    const result = await importFile(engine, filePath, 'concepts/empty-tl.md', { noEmbed: true });
+    const result = await importFile(engine, filePath, 'resources/empty-tl.md', { noEmbed: true });
 
     expect(result.status).toBe('imported');
 
@@ -317,7 +317,7 @@ Just compiled truth, no timeline separator.
   test('noEmbed: true skips embedding', async () => {
     const filePath = join(TMP, 'no-embed.md');
     writeFileSync(filePath, `---
-type: concept
+type: resource
 title: No Embed
 ---
 
@@ -325,7 +325,7 @@ Content to chunk but not embed.
 `);
 
     const engine = mockEngine();
-    const result = await importFile(engine, filePath, 'concepts/no-embed.md', { noEmbed: true });
+    const result = await importFile(engine, filePath, 'resources/no-embed.md', { noEmbed: true });
 
     expect(result.status).toBe('imported');
     const calls = (engine as any)._calls;
@@ -384,7 +384,7 @@ Content to chunk but not embed.
     const filePath = join(TMP, 'indexed.md');
     const longText = Array(50).fill('This is a sentence that adds length to the content.').join(' ');
     writeFileSync(filePath, `---
-type: concept
+type: resource
 title: Indexed
 ---
 
@@ -396,7 +396,7 @@ ${longText}
 `);
 
     const engine = mockEngine();
-    await importFile(engine, filePath, 'concepts/indexed.md', { noEmbed: true });
+    await importFile(engine, filePath, 'resources/indexed.md', { noEmbed: true });
 
     const calls = (engine as any)._calls;
     const chunkCall = calls.find((c: any) => c.method === 'upsertChunks');

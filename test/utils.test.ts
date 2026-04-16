@@ -4,7 +4,7 @@ import { validateSlug, contentHash, rowToPage, rowToChunk, rowToSearchResult } f
 describe('validateSlug', () => {
   test('accepts valid slugs', () => {
     expect(validateSlug('people/sarah-chen')).toBe('people/sarah-chen');
-    expect(validateSlug('concepts/rag')).toBe('concepts/rag');
+    expect(validateSlug('resources/rag')).toBe('resources/rag');
     expect(validateSlug('simple')).toBe('simple');
   });
 
@@ -29,20 +29,20 @@ describe('validateSlug', () => {
 
 describe('contentHash', () => {
   test('returns deterministic hash', () => {
-    const page = { title: 'Test', type: 'concept' as const, compiled_truth: 'hello', timeline: 'world' };
+    const page = { title: 'Test', type: 'resource' as const, compiled_truth: 'hello', timeline: 'world' };
     const h1 = contentHash(page);
     const h2 = contentHash(page);
     expect(h1).toBe(h2);
   });
 
   test('changes when content changes', () => {
-    const h1 = contentHash({ title: 'Test', type: 'concept' as const, compiled_truth: 'hello', timeline: 'world' });
-    const h2 = contentHash({ title: 'Test', type: 'concept' as const, compiled_truth: 'hello', timeline: 'changed' });
+    const h1 = contentHash({ title: 'Test', type: 'resource' as const, compiled_truth: 'hello', timeline: 'world' });
+    const h2 = contentHash({ title: 'Test', type: 'resource' as const, compiled_truth: 'hello', timeline: 'changed' });
     expect(h1).not.toBe(h2);
   });
 
   test('returns hex string', () => {
-    const h = contentHash({ title: 'Test', type: 'concept' as const, compiled_truth: 'test', timeline: '' });
+    const h = contentHash({ title: 'Test', type: 'resource' as const, compiled_truth: 'test', timeline: '' });
     expect(h).toMatch(/^[a-f0-9]{64}$/);
   });
 });
@@ -50,7 +50,7 @@ describe('contentHash', () => {
 describe('rowToPage', () => {
   test('parses string frontmatter', () => {
     const page = rowToPage({
-      id: 1, slug: 'test', type: 'concept', title: 'Test',
+      id: 1, slug: 'test', type: 'resource', title: 'Test',
       compiled_truth: 'body', timeline: '',
       frontmatter: '{"key":"val"}',
       content_hash: 'abc', created_at: '2024-01-01', updated_at: '2024-01-01',
@@ -60,7 +60,7 @@ describe('rowToPage', () => {
 
   test('handles object frontmatter', () => {
     const page = rowToPage({
-      id: 1, slug: 'test', type: 'concept', title: 'Test',
+      id: 1, slug: 'test', type: 'resource', title: 'Test',
       compiled_truth: 'body', timeline: '',
       frontmatter: { key: 'val' },
       content_hash: 'abc', created_at: '2024-01-01', updated_at: '2024-01-01',
@@ -70,7 +70,7 @@ describe('rowToPage', () => {
 
   test('creates Date objects', () => {
     const page = rowToPage({
-      id: 1, slug: 'test', type: 'concept', title: 'Test',
+      id: 1, slug: 'test', type: 'resource', title: 'Test',
       compiled_truth: '', timeline: '', frontmatter: '{}',
       content_hash: null, created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z',
     });
@@ -103,7 +103,7 @@ describe('rowToChunk', () => {
 describe('rowToSearchResult', () => {
   test('coerces score to number', () => {
     const r = rowToSearchResult({
-      slug: 'test', page_id: 1, title: 'Test', type: 'concept',
+      slug: 'test', page_id: 1, title: 'Test', type: 'resource',
       chunk_text: 'text', chunk_source: 'compiled_truth',
       score: '0.95', stale: false,
     });

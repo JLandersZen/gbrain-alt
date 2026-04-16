@@ -53,8 +53,8 @@ beforeAll(async () => {
   ];
   await engine.upsertChunks('people/pedro', pedroChunks);
 
-  await engine.putPage('companies/variant', {
-    type: 'company',
+  await engine.putPage('organizations/variant', {
+    type: 'organization',
     title: 'Variant Fund',
     compiled_truth: 'Variant is a crypto-native investment firm focused on web3 ownership economy.',
     timeline: '2024-06-01: Variant announced new fund.',
@@ -76,10 +76,10 @@ beforeAll(async () => {
       token_count: 12,
     },
   ];
-  await engine.upsertChunks('companies/variant', variantChunks);
+  await engine.upsertChunks('organizations/variant', variantChunks);
 
-  await engine.putPage('concepts/ai-philosophy', {
-    type: 'concept',
+  await engine.putPage('resources/ai-philosophy', {
+    type: 'resource',
     title: 'AI Changes Who Gets to Build',
     compiled_truth: 'AI democratizes building. The marginal cost of creation approaches zero.',
     timeline: '2024-01-10: First wrote about AI and building access.',
@@ -101,7 +101,7 @@ beforeAll(async () => {
       token_count: 15,
     },
   ];
-  await engine.upsertChunks('concepts/ai-philosophy', aiChunks);
+  await engine.upsertChunks('resources/ai-philosophy', aiChunks);
 });
 
 afterAll(async () => {

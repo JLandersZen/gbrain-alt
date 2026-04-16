@@ -33,7 +33,7 @@ async function truncateAll() {
 }
 
 const testPage: PageInput = {
-  type: 'concept',
+  type: 'resource',
   title: 'Test Page',
   compiled_truth: 'This is a test page about NovaMind AI agents.',
   timeline: '2024-01-15: Founded NovaMind',
@@ -49,7 +49,7 @@ describe('PGLiteEngine: Pages', () => {
     const page = await engine.putPage('test/hello', testPage);
     expect(page.slug).toBe('test/hello');
     expect(page.title).toBe('Test Page');
-    expect(page.type).toBe('concept');
+    expect(page.type).toBe('resource');
     expect(page.compiled_truth).toContain('NovaMind');
 
     const fetched = await engine.getPage('test/hello');
@@ -85,7 +85,7 @@ describe('PGLiteEngine: Pages', () => {
 
   test('listPages with type filter', async () => {
     await engine.putPage('people/alice', { ...testPage, type: 'person', title: 'Alice' });
-    await engine.putPage('concepts/rag', { ...testPage, type: 'concept', title: 'RAG' });
+    await engine.putPage('resources/rag', { ...testPage, type: 'resource', title: 'RAG' });
 
     const people = await engine.listPages({ type: 'person' });
     expect(people.length).toBe(1);
@@ -141,18 +141,18 @@ describe('PGLiteEngine: Pages', () => {
 describe('PGLiteEngine: Search', () => {
   beforeAll(async () => {
     await truncateAll();
-    await engine.putPage('companies/novamind', {
-      type: 'company', title: 'NovaMind',
+    await engine.putPage('organizations/novamind', {
+      type: 'organization', title: 'NovaMind',
       compiled_truth: 'NovaMind builds AI agents for enterprise automation.',
     });
-    await engine.upsertChunks('companies/novamind', [
+    await engine.upsertChunks('organizations/novamind', [
       { chunk_index: 0, chunk_text: 'NovaMind builds AI agents for enterprise', chunk_source: 'compiled_truth' },
     ]);
-    await engine.putPage('concepts/rag', {
-      type: 'concept', title: 'Retrieval-Augmented Generation',
+    await engine.putPage('resources/rag', {
+      type: 'resource', title: 'Retrieval-Augmented Generation',
       compiled_truth: 'RAG combines retrieval with generation for better answers.',
     });
-    await engine.upsertChunks('concepts/rag', [
+    await engine.upsertChunks('resources/rag', [
       { chunk_index: 0, chunk_text: 'RAG combines retrieval with generation', chunk_source: 'compiled_truth' },
     ]);
   });
@@ -160,7 +160,7 @@ describe('PGLiteEngine: Search', () => {
   test('searchKeyword returns results for matching term', async () => {
     const results = await engine.searchKeyword('NovaMind');
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0].slug).toBe('companies/novamind');
+    expect(results[0].slug).toBe('organizations/novamind');
   });
 
   test('searchKeyword returns empty for non-matching term', async () => {
@@ -251,40 +251,40 @@ describe('PGLiteEngine: Links', () => {
   beforeEach(async () => {
     await truncateAll();
     await engine.putPage('people/alice', { ...testPage, type: 'person', title: 'Alice' });
-    await engine.putPage('companies/acme', { ...testPage, type: 'company', title: 'ACME' });
-    await engine.putPage('companies/beta', { ...testPage, type: 'company', title: 'Beta' });
+    await engine.putPage('organizations/acme', { ...testPage, type: 'organization', title: 'ACME' });
+    await engine.putPage('organizations/beta', { ...testPage, type: 'organization', title: 'Beta' });
   });
 
   test('addLink + getLinks', async () => {
-    await engine.addLink('people/alice', 'companies/acme', 'works at', 'employment');
+    await engine.addLink('people/alice', 'organizations/acme', 'works at', 'employment');
     const links = await engine.getLinks('people/alice');
     expect(links.length).toBe(1);
-    expect(links[0].to_slug).toBe('companies/acme');
+    expect(links[0].to_slug).toBe('organizations/acme');
   });
 
   test('getBacklinks', async () => {
-    await engine.addLink('people/alice', 'companies/acme');
-    const backlinks = await engine.getBacklinks('companies/acme');
+    await engine.addLink('people/alice', 'organizations/acme');
+    const backlinks = await engine.getBacklinks('organizations/acme');
     expect(backlinks.length).toBe(1);
     expect(backlinks[0].from_slug).toBe('people/alice');
   });
 
   test('removeLink', async () => {
-    await engine.addLink('people/alice', 'companies/acme');
-    await engine.removeLink('people/alice', 'companies/acme');
+    await engine.addLink('people/alice', 'organizations/acme');
+    await engine.removeLink('people/alice', 'organizations/acme');
     const links = await engine.getLinks('people/alice');
     expect(links.length).toBe(0);
   });
 
   test('traverseGraph with depth', async () => {
-    await engine.addLink('people/alice', 'companies/acme');
-    await engine.addLink('companies/acme', 'companies/beta');
+    await engine.addLink('people/alice', 'organizations/acme');
+    await engine.addLink('organizations/acme', 'organizations/beta');
 
     const graph = await engine.traverseGraph('people/alice', 2);
     expect(graph.length).toBeGreaterThanOrEqual(2);
     const slugs = graph.map(n => n.slug);
     expect(slugs).toContain('people/alice');
-    expect(slugs).toContain('companies/acme');
+    expect(slugs).toContain('organizations/acme');
   });
 });
 
@@ -436,7 +436,7 @@ describe('PGLiteEngine: Stats & Health', () => {
     expect(stats.page_count).toBe(1);
     expect(stats.chunk_count).toBe(1);
     expect(stats.tag_count).toBe(1);
-    expect(stats.pages_by_type.concept).toBe(1);
+    expect(stats.pages_by_type.resource).toBe(1);
   });
 
   test('getHealth returns coverage metrics', async () => {

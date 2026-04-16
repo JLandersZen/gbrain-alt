@@ -55,7 +55,7 @@ describe('listPages is NOT affected by search clamp', () => {
 
     // Insert a page
     await engine.putPage('test/big-list', {
-      title: 'Test', type: 'concept', compiled_truth: 'test content', timeline: '',
+      title: 'Test', type: 'resource', compiled_truth: 'test content', timeline: '',
     });
 
     // listPages with limit 100000 should NOT be clamped

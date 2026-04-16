@@ -1,5 +1,5 @@
 ---
-type: company
+type: organization
 title: NovaMind
 tags:
   - yc-w25

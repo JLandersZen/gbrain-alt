@@ -1,5 +1,5 @@
 ---
-type: concept
+type: resource
 title: Large Test File
 ---
 

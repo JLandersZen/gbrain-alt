@@ -1,5 +1,5 @@
 ---
-type: company
+type: organization
 title: OhMyGreen
 tags: [food-tech, yc, snacks]
 ---

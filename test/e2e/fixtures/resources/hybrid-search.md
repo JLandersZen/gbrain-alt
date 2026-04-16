@@ -1,5 +1,5 @@
 ---
-type: concept
+type: resource
 title: Hybrid Search
 tags:
   - search

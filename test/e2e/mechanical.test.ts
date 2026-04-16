@@ -64,16 +64,16 @@ describeE2E('E2E: Page CRUD', () => {
     expect(page.tags).toContain('yc-w25');
   });
 
-  test('get_page returns correct data for concept', async () => {
-    const page = await callOp('get_page', { slug: 'concepts/retrieval-augmented-generation' }) as any;
+  test('get_page returns correct data for resource', async () => {
+    const page = await callOp('get_page', { slug: 'resources/retrieval-augmented-generation' }) as any;
     expect(page.title).toBe('Retrieval-Augmented Generation');
-    expect(page.type).toBe('concept');
+    expect(page.type).toBe('resource');
     expect(page.compiled_truth).toContain('検索拡張生成');
   });
 
-  test('get_page for company includes key details', async () => {
-    const page = await callOp('get_page', { slug: 'companies/novamind' }) as any;
-    expect(page.type).toBe('company');
+  test('get_page for organization includes key details', async () => {
+    const page = await callOp('get_page', { slug: 'organizations/novamind' }) as any;
+    expect(page.type).toBe('organization');
     expect(page.compiled_truth).toContain('Sarah Chen');
   });
 
@@ -81,11 +81,11 @@ describeE2E('E2E: Page CRUD', () => {
     const people = await callOp('list_pages', { type: 'person' }) as any[];
     expect(people.length).toBe(3);
 
-    const companies = await callOp('list_pages', { type: 'company' }) as any[];
-    expect(companies.length).toBe(3); // novamind, threshold-ventures, ohmygreen
+    const organizations = await callOp('list_pages', { type: 'organization' }) as any[];
+    expect(organizations.length).toBe(3); // novamind, threshold-ventures, ohmygreen
 
-    const concepts = await callOp('list_pages', { type: 'concept' }) as any[];
-    expect(concepts.length).toBe(5); // compiled-truth, hybrid-search, RAG, notes-march-2024, big-file
+    const resources = await callOp('list_pages', { type: 'resource' }) as any[];
+    expect(resources.length).toBe(5); // compiled-truth, hybrid-search, RAG, notes-march-2024, big-file
   });
 
   test('list_pages tag filter works', async () => {
@@ -106,7 +106,7 @@ describeE2E('E2E: Page CRUD', () => {
   });
 
   test('delete_page removes page and others survive', async () => {
-    await callOp('delete_page', { slug: 'sources/crustdata-sarah-chen' });
+    await callOp('delete_page', { slug: 'resources/crustdata-sarah-chen' });
     const stats = await callOp('get_stats') as any;
     expect(stats.page_count).toBe(15);
 
@@ -131,14 +131,14 @@ describeE2E('E2E: Search', () => {
     const results = await callOp('search', { query: 'NovaMind' }) as any[];
     expect(results.length).toBeGreaterThanOrEqual(3);
     const slugs = results.map((r: any) => r.slug);
-    expect(slugs).toContain('companies/novamind');
+    expect(slugs).toContain('organizations/novamind');
   });
 
   test('keyword search for "Threshold Ventures" finds investor', async () => {
     const results = await callOp('search', { query: 'Threshold Ventures' }) as any[];
     expect(results.length).toBeGreaterThanOrEqual(1);
     const slugs = results.map((r: any) => r.slug);
-    expect(slugs).toContain('companies/threshold-ventures');
+    expect(slugs).toContain('organizations/threshold-ventures');
   });
 
   test('keyword search for "Stanford" finds Priya', async () => {
@@ -155,9 +155,9 @@ describeE2E('E2E: Search', () => {
 
   test('search quality: precision@5 for known queries', async () => {
     const groundTruth: Record<string, string[]> = {
-      'NovaMind': ['people/sarah-chen', 'companies/novamind', 'deals/novamind-seed'],
-      'hybrid search': ['concepts/hybrid-search', 'concepts/retrieval-augmented-generation'],
-      'compiled truth': ['concepts/compiled-truth'],
+      'NovaMind': ['people/sarah-chen', 'organizations/novamind', 'events/novamind-seed'],
+      'hybrid search': ['resources/hybrid-search', 'resources/retrieval-augmented-generation'],
+      'compiled truth': ['resources/compiled-truth'],
     };
 
     const scores: Record<string, number> = {};
@@ -189,15 +189,15 @@ describeE2E('E2E: Links', () => {
   test('add_link + get_links + get_backlinks round trip', async () => {
     await callOp('add_link', {
       from: 'people/sarah-chen',
-      to: 'companies/novamind',
+      to: 'organizations/novamind',
       link_type: 'founded',
       context: 'CEO and founder since 2024',
     });
 
     const links = await callOp('get_links', { slug: 'people/sarah-chen' }) as any[];
-    expect(links.some((l: any) => l.to_slug === 'companies/novamind' || l.to_page_slug === 'companies/novamind')).toBe(true);
+    expect(links.some((l: any) => l.to_slug === 'organizations/novamind' || l.to_page_slug === 'organizations/novamind')).toBe(true);
 
-    const backlinks = await callOp('get_backlinks', { slug: 'companies/novamind' }) as any[];
+    const backlinks = await callOp('get_backlinks', { slug: 'organizations/novamind' }) as any[];
     expect(backlinks.some((l: any) => l.from_slug === 'people/sarah-chen' || l.from_page_slug === 'people/sarah-chen')).toBe(true);
   });
 
@@ -209,12 +209,12 @@ describeE2E('E2E: Links', () => {
   });
 
   test('remove_link removes the link', async () => {
-    await callOp('add_link', { from: 'people/marcus-reid', to: 'companies/threshold-ventures' });
-    await callOp('remove_link', { from: 'people/marcus-reid', to: 'companies/threshold-ventures' });
+    await callOp('add_link', { from: 'people/marcus-reid', to: 'organizations/threshold-ventures' });
+    await callOp('remove_link', { from: 'people/marcus-reid', to: 'organizations/threshold-ventures' });
 
     const links = await callOp('get_links', { slug: 'people/marcus-reid' }) as any[];
     const hasLink = links.some((l: any) =>
-      (l.to_slug || l.to_page_slug) === 'companies/threshold-ventures'
+      (l.to_slug || l.to_page_slug) === 'organizations/threshold-ventures'
     );
     expect(hasLink).toBe(false);
   });
@@ -384,7 +384,7 @@ describeE2E('E2E: Ingest Log & Raw Data', () => {
     await callOp('log_ingest', {
       source_type: 'e2e-test',
       source_ref: 'test-run-1',
-      pages_updated: ['people/sarah-chen', 'companies/novamind'],
+      pages_updated: ['people/sarah-chen', 'organizations/novamind'],
       summary: 'E2E test ingest',
     });
 
@@ -747,7 +747,7 @@ describeE2E('E2E: Slug with Special Characters', () => {
     const page = await callOp('get_page', { slug: 'apple-notes/2017-05-03-ohmygreen' }) as any;
     expect(page).not.toBeNull();
     expect(page.title).toBe('OhMyGreen');
-    expect(page.type).toBe('company');
+    expect(page.type).toBe('organization');
   });
 
   test('imports files with parens in filename', async () => {
@@ -997,8 +997,8 @@ describeE2E('E2E: Performance Baselines', () => {
     }
 
     const [___, linkMs] = await time(async () => {
-      await callOp('add_link', { from: 'people/sarah-chen', to: 'companies/novamind' });
-      await callOp('get_backlinks', { slug: 'companies/novamind' });
+      await callOp('add_link', { from: 'people/sarah-chen', to: 'organizations/novamind' });
+      await callOp('get_backlinks', { slug: 'organizations/novamind' });
     });
 
     searchTimes.sort((a, b) => a - b);

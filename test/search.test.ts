@@ -12,7 +12,7 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
     slug: 'test-page',
     page_id: 1,
     title: 'Test',
-    type: 'concept',
+    type: 'resource',
     chunk_text: 'test chunk text',
     chunk_source: 'compiled_truth',
     chunk_id: 1,
