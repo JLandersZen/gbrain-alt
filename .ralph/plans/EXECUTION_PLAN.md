@@ -61,17 +61,22 @@ gbrain-alt. Three sub-slices, each independently committable.
 **Goal:** All test files use the new types. Full `bun test` passes. Search quality
 benchmark runs with new entity types.
 
-**Files changed:**
+**Files with old type references** (found via grep post-1a):
 
-| File | Change | Lines |
-|------|--------|-------|
-| `test/pglite-engine.test.ts` | Replace `person`/`company`/`concept` in fixtures and assertions | ~30 |
-| `test/dedup.test.ts` | Replace type values in SearchResult fixtures | ~10 |
-| `test/e2e/mechanical.test.ts` | Update type filtering, assertions, and CRUD test types | ~30 |
-| `test/benchmark-search-quality.ts` | Update 40+ page definitions — types, slugs, directory prefixes | ~200 |
+| File | Old types found |
+|------|-----------------|
+| `test/pglite-engine.test.ts` | `person`, `company`, `concept` in fixtures/assertions |
+| `test/dedup.test.ts` | `person`, `concept` in SearchResult fixtures |
+| `test/search.test.ts` | type values in search result fixtures |
+| `test/search-limit.test.ts` | type values in limit test fixtures |
+| `test/utils.test.ts` | type values in utility test fixtures |
+| `test/file-resolver.test.ts` | type values in resolver fixtures |
+| `test/e2e/mechanical.test.ts` | type filtering, assertions, CRUD test types |
+| `test/e2e/search-quality.test.ts` | type values in search quality fixtures |
+| `test/benchmark-search-quality.ts` | 40+ page definitions — types, slugs, directory prefixes |
 
 **Acceptance:**
-- `bun test` passes (all 28 unit test files)
+- `bun test` passes (all unit + inline E2E test files)
 - `bun run test/benchmark-search-quality.ts` completes without type errors
 - No references to `deal`, `yc`, `civic`, `concept`, `source`, or `media` as
   literal type values in any test file (excluding comments about the migration)
