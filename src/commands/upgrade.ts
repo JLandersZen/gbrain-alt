@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { VERSION } from '../version.ts';
+import { globalConfigDir } from '../core/config.ts';
 
 export async function runUpgrade(args: string[]) {
   if (args.includes('--help') || args.includes('-h')) {
@@ -77,7 +78,7 @@ function verifyUpgrade(): string {
 
 function saveUpgradeState(oldVersion: string, newVersion: string) {
   try {
-    const dir = join(process.env.HOME || '', '.gbrain');
+    const dir = globalConfigDir();
     mkdirSync(dir, { recursive: true });
     const statePath = join(dir, 'upgrade-state.json');
     const state: Record<string, unknown> = existsSync(statePath)
@@ -101,7 +102,7 @@ function saveUpgradeState(oldVersion: string, newVersion: string) {
  */
 export function runPostUpgrade() {
   try {
-    const statePath = join(process.env.HOME || '', '.gbrain', 'upgrade-state.json');
+    const statePath = join(globalConfigDir(), 'upgrade-state.json');
     if (!existsSync(statePath)) return;
     const state = JSON.parse(readFileSync(statePath, 'utf-8'));
     const lastUpgrade = state.last_upgrade;

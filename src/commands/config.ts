@@ -1,5 +1,5 @@
 import type { BrainEngine } from '../core/engine.ts';
-import { loadConfig } from '../core/config.ts';
+import { loadConfig, configPath } from '../core/config.ts';
 
 function redactUrl(url: string): string {
   // Redact password in postgresql:// URLs
@@ -20,7 +20,7 @@ export async function runConfig(engine: BrainEngine, args: string[]) {
       console.error('No config found. Run: gbrain init');
       process.exit(1);
     }
-    console.log('GBrain config:');
+    console.log(`GBrain config (${configPath()}):`);
     for (const [k, v] of Object.entries(config)) {
       const display = typeof v === 'string' && v.includes('postgresql://')
         ? redactUrl(v)
