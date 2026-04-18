@@ -2,6 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { writeFileSync, mkdirSync, rmSync, symlinkSync } from 'fs';
 import { join } from 'path';
 import { importFile, importFromContent } from '../src/core/import-file.ts';
+import { buildTitleMap } from '../src/core/normalize.ts';
 import type { BrainEngine } from '../src/core/engine.ts';
 
 const TMP = join(import.meta.dir, '.tmp-import-test');
@@ -406,5 +407,109 @@ ${longText}
         expect(chunks[i].chunk_index).toBe(i);
       }
     }
+  });
+
+  test('normalizes display-name relations when titleMap is provided', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Agentic Infrastructure', slug: 'projects/agentic-infrastructure' },
+      { title: 'Joe Landers', slug: 'people/joe-landers' },
+    ]);
+
+    const content = `---
+type: tasks
+title: Review Agent PoC
+assigned_projects: Agentic Infrastructure
+related_people: Joe Landers
+---
+
+Check the PoC.
+`;
+    const engine = mockEngine();
+    const result = await importFromContent(engine, 'tasks/review-agent-poc', content, {
+      noEmbed: true, titleMap,
+    });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const putCall = calls.find((c: any) => c.method === 'putPage');
+    expect(putCall).toBeDefined();
+
+    const page = putCall.args[1];
+    // Type should be singularized (tasks → task) by parseMarkdown
+    expect(page.type).toBe('task');
+    // Relations should be resolved to slug paths
+    expect(page.frontmatter.assigned_projects).toEqual(['projects/agentic-infrastructure']);
+    expect(page.frontmatter.related_people).toEqual(['people/joe-landers']);
+  });
+
+  test('normalizes Notion paths in body when titleMap is provided', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Amir Alavi', slug: 'people/amir-alavi' },
+    ]);
+
+    const content = `---
+type: event
+title: Amir Leave
+---
+
+People: [Amir Alavi](../People/Amir%20Alavi%20324ec333f05b8151a752fa8732cfa4cd.md)
+`;
+    const engine = mockEngine();
+    const result = await importFromContent(engine, 'events/amir-leave', content, {
+      noEmbed: true, titleMap,
+    });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const putCall = calls.find((c: any) => c.method === 'putPage');
+    expect(putCall.args[1].compiled_truth).toContain('people/amir-alavi.md');
+    expect(putCall.args[1].compiled_truth).not.toContain('324ec333f05b');
+  });
+
+  test('import works correctly without titleMap (no relation resolution)', async () => {
+    const content = `---
+type: tasks
+title: Simple Task
+assigned_projects: Some Display Name
+---
+
+Content.
+`;
+    const engine = mockEngine();
+    const result = await importFromContent(engine, 'tasks/simple', content, { noEmbed: true });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const putCall = calls.find((c: any) => c.method === 'putPage');
+    // Type still gets singularized (parseMarkdown always does this)
+    expect(putCall.args[1].type).toBe('task');
+    // But display names are NOT resolved without a titleMap
+    expect(putCall.args[1].frontmatter.assigned_projects).toBe('Some Display Name');
+  });
+
+  test('normalizes _events field rename during import with titleMap', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Weekly Sync', slug: 'events/weekly-sync' },
+    ]);
+
+    const content = `---
+type: people
+title: Alice
+_events: Weekly Sync
+---
+
+Notes about Alice.
+`;
+    const engine = mockEngine();
+    const result = await importFromContent(engine, 'people/alice', content, {
+      noEmbed: true, titleMap,
+    });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const putCall = calls.find((c: any) => c.method === 'putPage');
+    // _events renamed to related_events by parseMarkdown, then resolved by titleMap
+    expect(putCall.args[1].frontmatter).not.toHaveProperty('_events');
+    expect(putCall.args[1].frontmatter.related_events).toEqual(['events/weekly-sync']);
   });
 });

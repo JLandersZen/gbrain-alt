@@ -1,6 +1,12 @@
 import matter from 'gray-matter';
 import type { PageType } from './types.ts';
 import { slugifyPath } from './sync.ts';
+import { normalizeType, type TitleMap } from './normalize.ts';
+
+const FIELD_RENAMES: Record<string, string> = {
+  _events: 'related_events',
+  parent_page: 'parent',
+};
 
 export interface ParsedMarkdown {
   frontmatter: Record<string, unknown>;
@@ -42,11 +48,23 @@ export function parseMarkdown(content: string, filePath?: string): ParsedMarkdow
   // Split body at standalone --- separators
   const { compiled_truth, relationships, timeline } = splitBody(body);
 
-  // Extract metadata from frontmatter
-  const type = (frontmatter.type as PageType) || inferType(filePath);
+  // Normalize type: singularize plurals, lowercase
+  let rawType = (frontmatter.type as string) || '';
+  if (rawType) {
+    rawType = normalizeType(rawType).normalized;
+  }
+  const type = (rawType as PageType) || inferType(filePath);
   const title = (frontmatter.title as string) || inferTitle(filePath);
   const tags = extractTags(frontmatter);
   const slug = (frontmatter.slug as string) || inferSlug(filePath);
+
+  // Rename known fields (e.g. _events → related_events, parent_page → parent)
+  for (const [oldName, newName] of Object.entries(FIELD_RENAMES)) {
+    if (oldName in frontmatter && !(newName in frontmatter)) {
+      frontmatter[newName] = frontmatter[oldName];
+    }
+    delete frontmatter[oldName];
+  }
 
   // Remove processed fields from frontmatter (they're stored as columns)
   const cleanFrontmatter = { ...frontmatter };

@@ -283,6 +283,43 @@ Adapting GBrain for personal use.
   });
 });
 
+describe('parseMarkdown normalization', () => {
+  test('singularizes plural type values', () => {
+    expect(parseMarkdown('---\ntype: tasks\ntitle: Fix\n---\nContent').type).toBe('task');
+    expect(parseMarkdown('---\ntype: people\ntitle: Joe\n---\nContent').type).toBe('person');
+    expect(parseMarkdown('---\ntype: events\ntitle: Sync\n---\nContent').type).toBe('event');
+    expect(parseMarkdown('---\ntype: resources\ntitle: Doc\n---\nContent').type).toBe('resource');
+    expect(parseMarkdown('---\ntype: organizations\ntitle: Acme\n---\nContent').type).toBe('organization');
+    expect(parseMarkdown('---\ntype: aors\ntitle: Eng\n---\nContent').type).toBe('aor');
+    expect(parseMarkdown('---\ntype: contexts\ntitle: Work\n---\nContent').type).toBe('context');
+    expect(parseMarkdown('---\ntype: interests\ntitle: AI\n---\nContent').type).toBe('interest');
+  });
+
+  test('singular types pass through unchanged', () => {
+    expect(parseMarkdown('---\ntype: task\ntitle: Fix\n---\nContent').type).toBe('task');
+    expect(parseMarkdown('---\ntype: person\ntitle: Joe\n---\nContent').type).toBe('person');
+    expect(parseMarkdown('---\ntype: project\ntitle: X\n---\nContent').type).toBe('project');
+  });
+
+  test('renames _events to related_events', () => {
+    const parsed = parseMarkdown('---\ntype: person\ntitle: Joe\n_events: Meeting\n---\nContent');
+    expect(parsed.frontmatter).not.toHaveProperty('_events');
+    expect(parsed.frontmatter.related_events).toBe('Meeting');
+  });
+
+  test('renames parent_page to parent', () => {
+    const parsed = parseMarkdown('---\ntype: project\ntitle: X\nparent_page: Big Project\n---\nContent');
+    expect(parsed.frontmatter).not.toHaveProperty('parent_page');
+    expect(parsed.frontmatter.parent).toBe('Big Project');
+  });
+
+  test('does not overwrite existing field on rename', () => {
+    const parsed = parseMarkdown('---\ntype: project\ntitle: X\nparent_page: Old\nparent: New\n---\nContent');
+    expect(parsed.frontmatter.parent).toBe('New');
+    expect(parsed.frontmatter).not.toHaveProperty('parent_page');
+  });
+});
+
 describe('parseMarkdown edge cases', () => {
   test('handles content with multiple --- separators (three-zone interpretation)', () => {
     const md = `---

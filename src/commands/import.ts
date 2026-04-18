@@ -2,9 +2,11 @@ import { readdirSync, lstatSync, existsSync, writeFileSync, readFileSync, unlink
 import { execFileSync } from 'child_process';
 import { join, relative } from 'path';
 import { cpus, totalmem } from 'os';
+import matter from 'gray-matter';
 import type { BrainEngine } from '../core/engine.ts';
 import { importFile } from '../core/import-file.ts';
 import { loadConfig, configDir } from '../core/config.ts';
+import { buildTitleMap, type TitleMap } from '../core/normalize.ts';
 
 function defaultWorkers(): number {
   const cpuCount = cpus().length;
@@ -37,6 +39,21 @@ export async function runImport(engine: BrainEngine, args: string[]) {
   // Collect all .md files
   const allFiles = collectMarkdownFiles(dir);
   console.log(`Found ${allFiles.length} markdown files`);
+
+  // Pre-scan titles to build a lookup map for resolving display-name relations.
+  // This is a fast pass that only reads frontmatter (no DB, no embedding).
+  const titleEntries: { title: string; slug: string }[] = [];
+  for (const f of allFiles) {
+    try {
+      const raw = readFileSync(f, 'utf-8');
+      const { data } = matter(raw);
+      const rel = relative(dir, f);
+      const slug = rel.replace(/\.md$/, '');
+      const title = (data.title as string) || slug.split('/').pop()?.replace(/-/g, ' ') || slug;
+      titleEntries.push({ title, slug });
+    } catch { /* skip unreadable */ }
+  }
+  const titleMap = buildTitleMap(titleEntries);
 
   // Resume from checkpoint if available
   const checkpointPath = join(configDir(), 'import-checkpoint.json');
@@ -82,7 +99,7 @@ export async function runImport(engine: BrainEngine, args: string[]) {
   async function processFile(eng: BrainEngine, filePath: string) {
     const relativePath = relative(dir, filePath);
     try {
-      const result = await importFile(eng, filePath, relativePath, { noEmbed });
+      const result = await importFile(eng, filePath, relativePath, { noEmbed, titleMap });
       if (result.status === 'imported') {
         imported++;
         chunksCreated += result.chunks;

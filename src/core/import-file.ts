@@ -5,6 +5,7 @@ import { parseMarkdown } from './markdown.ts';
 import { chunkText } from './chunkers/recursive.ts';
 import { embedBatch } from './embedding.ts';
 import { slugifyPath } from './sync.ts';
+import { normalizeFrontmatter, normalizeBody, type TitleMap } from './normalize.ts';
 import type { ChunkInput } from './types.ts';
 
 export interface ImportResult {
@@ -32,7 +33,7 @@ export async function importFromContent(
   engine: BrainEngine,
   slug: string,
   content: string,
-  opts: { noEmbed?: boolean } = {},
+  opts: { noEmbed?: boolean; titleMap?: TitleMap } = {},
 ): Promise<ImportResult> {
   // Reject oversized payloads before any parsing, chunking, or embedding happens.
   // Uses Buffer.byteLength to count UTF-8 bytes the same way disk size would,
@@ -48,6 +49,19 @@ export async function importFromContent(
   }
 
   const parsed = parseMarkdown(content, slug + '.md');
+
+  // Normalize frontmatter relations and body content when a title map is available.
+  // parseMarkdown already handles type singularization and field renames;
+  // this pass resolves display-name relations to slug paths and cleans Notion paths.
+  if (opts.titleMap) {
+    const { fixed } = normalizeFrontmatter(parsed.frontmatter, slug + '.md', opts.titleMap);
+    Object.assign(parsed.frontmatter, fixed);
+
+    const bodyResult = normalizeBody(parsed.compiled_truth, slug + '.md', opts.titleMap);
+    if (bodyResult.issues.length > 0) {
+      (parsed as any).compiled_truth = bodyResult.fixed;
+    }
+  }
 
   // Hash includes ALL fields for idempotency (not just compiled_truth + timeline)
   const hash = createHash('sha256')
@@ -140,7 +154,7 @@ export async function importFromFile(
   engine: BrainEngine,
   filePath: string,
   relativePath: string,
-  opts: { noEmbed?: boolean } = {},
+  opts: { noEmbed?: boolean; titleMap?: TitleMap } = {},
 ): Promise<ImportResult> {
   // Defense-in-depth: reject symlinks before reading content.
   const lstat = lstatSync(filePath);
