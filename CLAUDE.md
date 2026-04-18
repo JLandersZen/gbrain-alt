@@ -22,6 +22,7 @@ markdown files (tool-agnostic, work with both CLI and plugin contexts).
 - `src/core/postgres-engine.ts` — Postgres + pgvector implementation (Supabase / self-hosted)
 - `src/core/utils.ts` — Shared SQL utilities extracted from postgres-engine.ts
 - `src/core/config.ts` — Local-first config discovery (walk-up from cwd), credential precedence (env > file)
+- `src/core/env.ts` — .env file auto-loading with walk-up discovery (project root, .gbrain/, global). Loaded first in cli.ts.
 - `src/core/db.ts` — Connection management, schema initialization
 - `src/commands/migrate-engine.ts` — Bidirectional engine migration (`gbrain migrate --to supabase/pglite`)
 - `src/core/import-file.ts` — importFromFile + importFromContent (chunk + embed + tags)
@@ -76,7 +77,7 @@ Key commands added in v0.7:
 
 ## Testing
 
-`bun test` runs all tests (28 unit test files + 5 E2E test files). Unit tests run
+`bun test` runs all tests (38 unit test files + 6 E2E test files). Unit tests run
 without a database. E2E tests skip gracefully when `DATABASE_URL` is not set.
 
 Unit tests: `test/markdown.test.ts` (frontmatter parsing), `test/chunkers/recursive.test.ts`
@@ -101,7 +102,9 @@ parity), `test/cli.test.ts` (CLI structure), `test/config.test.ts` (config redac
 `test/search.test.ts` (RRF normalization, compiled truth boost, cosine similarity, dedup key),
 `test/dedup.test.ts` (source-aware dedup, compiled truth guarantee, layer interactions),
 `test/intent.test.ts` (query intent classification: entity/temporal/event/general),
-`test/eval.test.ts` (retrieval metrics: precisionAtK, recallAtK, mrr, ndcgAtK, parseQrels).
+`test/eval.test.ts` (retrieval metrics: precisionAtK, recallAtK, mrr, ndcgAtK, parseQrels),
+`test/embed.test.ts` (embed concurrency, OPENAI_API_KEY upfront check),
+`test/env.test.ts` (.env file parsing, walk-up discovery, precedence, no-override).
 
 E2E tests (`test/e2e/`): Run against real Postgres+pgvector. Require `DATABASE_URL`.
 - `bun run test:e2e` runs Tier 1 (mechanical, all operations, no API keys)

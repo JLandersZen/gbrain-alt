@@ -467,6 +467,8 @@ Phase 2 validated Phase 1. Phase 3 fixes gaps discovered during Phase 2.
 | `parent_page` instead of `parent` | ✅ Resolved (3b-pre) | `parseMarkdown()` renames via `FIELD_RENAMES` map. |
 | Publish command won't strip relationships zone | **Active (3e)** | `makeShareable()` regex only matches `## Timeline`, not `## Relationships`. Fix when Slice 3c generates the zone. |
 | Existing pages with multiple `---` reinterpreted | **Active** | Three-zone parser treats middle section as relationships. Pages with extra `---` in their timeline will have that content moved to relationships zone. Mitigation: only pages explicitly given a relationships zone via sync will have two separators. Existing two-zone pages are backwards compatible. |
+| Embed silently skips without OPENAI_API_KEY | **Active** | `gbrain embed` produces no error when key is missing. Beads: `gbrain-alt-qbv`. Fix: upfront key check in embed codepath. |
+| No .env auto-loading in CLI | **Active** | Users must manually export API keys every terminal session. Beads: `gbrain-alt-qbv`. Fix: dotenv loading early in `src/cli.ts`, walk-up discovery (project root, then `.gbrain/`). |
 
 ---
 

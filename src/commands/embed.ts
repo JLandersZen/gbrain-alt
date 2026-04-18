@@ -8,6 +8,16 @@ export async function runEmbed(engine: BrainEngine, args: string[]) {
   const all = args.includes('--all');
   const stale = args.includes('--stale');
 
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('Error: OPENAI_API_KEY is not set. Embeddings require an OpenAI API key.');
+    console.error('');
+    console.error('Set it in your environment:');
+    console.error('  export OPENAI_API_KEY=sk-...');
+    console.error('');
+    console.error('Or add it to a .env file in your project root (next to .gbrain/).');
+    process.exit(1);
+  }
+
   if (slug) {
     await embedPage(engine, slug);
   } else if (all || stale) {

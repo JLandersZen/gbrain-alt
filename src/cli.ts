@@ -1,5 +1,8 @@
 #!/usr/bin/env bun
 
+import { loadEnvFiles } from './core/env.ts';
+loadEnvFiles();
+
 import { readFileSync } from 'fs';
 import { loadConfig, toEngineConfig } from './core/config.ts';
 import type { BrainEngine } from './core/engine.ts';

@@ -43,14 +43,56 @@ function mockEngine(overrides: Partial<Record<string, any>> = {}): BrainEngine {
   return engine;
 }
 
+let savedApiKey: string | undefined;
+
 beforeEach(() => {
   activeEmbedCalls = 0;
   maxConcurrentEmbedCalls = 0;
   totalEmbedCalls = 0;
+  savedApiKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'sk-test-placeholder';
 });
 
 afterEach(() => {
   delete process.env.GBRAIN_EMBED_CONCURRENCY;
+  if (savedApiKey !== undefined) process.env.OPENAI_API_KEY = savedApiKey;
+  else delete process.env.OPENAI_API_KEY;
+});
+
+describe('runEmbed API key check', () => {
+  test('exits with error when OPENAI_API_KEY is not set', async () => {
+    delete process.env.OPENAI_API_KEY;
+
+    const engine = mockEngine();
+    const errors: string[] = [];
+    const origError = console.error;
+    console.error = (...args: any[]) => errors.push(args.join(' '));
+
+    let exitCode: number | undefined;
+    const origExit = process.exit;
+    process.exit = ((code?: number) => { exitCode = code; throw new Error('EXIT'); }) as any;
+
+    try {
+      await runEmbed(engine, ['--stale']);
+    } catch (e: any) {
+      if (e.message !== 'EXIT') throw e;
+    } finally {
+      process.exit = origExit;
+      console.error = origError;
+    }
+
+    expect(exitCode).toBe(1);
+    expect(errors.some(e => e.includes('OPENAI_API_KEY'))).toBe(true);
+  });
+
+  test('proceeds when OPENAI_API_KEY is set', async () => {
+    const engine = mockEngine({
+      listPages: async () => [],
+    });
+
+    // beforeEach already sets OPENAI_API_KEY=sk-test-placeholder
+    await runEmbed(engine, ['--stale']);
+  });
 });
 
 describe('runEmbed --all (parallel)', () => {
