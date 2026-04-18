@@ -159,39 +159,40 @@ to `type: resource` in Slice 1b, making the correct count 6. Fixed and verified.
 (created via `bd worktree create` from `ralph-pva`). Notion export goes in
 `ralph-brain/exports/`. Imported brain pages go in `ralph-brain/brain/`.
 
-### Slice 2a — Local-first Config ⬅ NEXT (blocker for Slice 2b)
+### Slice 2a — Local-first Config ✅ DONE
 
-**Beads:** `gbrain-alt-j53` (P1, open)
+**Completed:** 2026-04-18. All 600 tests pass (9 new config discovery tests). Beads: `gbrain-alt-j53`.
 
 **Problem:** gbrain config (`~/.gbrain/config.json`) and PGLite database
-(`~/.gbrain/brain.pglite`) are global singletons. No per-project isolation.
-Worktrees, experimentation, and multiple brains all collide. Blowing away a
-POC worktree doesn't reset the database.
+(`~/.gbrain/brain.pglite`) were global singletons. No per-project isolation.
 
-**Fix:** Look for `.gbrain/config.json` in the current directory (walking up
-to repo root) first, fall back to `~/.gbrain/`. When found locally,
-`database_path` defaults to `.gbrain/brain.pglite` relative to that config.
-`gbrain init` should create `.gbrain/` in the current project by default,
-with a `--global` flag for the old behavior.
+**Solution implemented:**
+- `src/core/config.ts` — `discoverConfigDir()` walks up from cwd looking for
+  `.gbrain/config.json`, falls back to `~/.gbrain/`. New exports: `setConfigDir()`,
+  `resetConfigDir()`, `globalConfigDir()`. `configDir()` and `configPath()` now
+  return the resolved (local or global) path. Module-level cache with reset for tests.
+- `src/commands/init.ts` — `gbrain init` creates `.gbrain/` in cwd by default.
+  `--global` flag creates at `~/.gbrain/` (old behavior). `.gitignore` updated
+  automatically for local init.
+- `src/commands/import.ts` — checkpoint path uses `configDir()` (per-brain).
+- `src/commands/migrate-engine.ts` — manifest uses `globalConfigDir()`, default
+  pglite target uses `configDir()`.
+- `src/commands/integrations.ts` — heartbeat uses `globalConfigDir()` (global).
+- `src/commands/upgrade.ts` — upgrade state uses `globalConfigDir()` (global).
+- `src/commands/config.ts` — `config show` displays resolved config path.
+- `test/config-discovery.test.ts` — 9 tests covering discovery, override, reset,
+  global fallback, save/load roundtrip, env var precedence.
 
-**Files to change:**
-- `src/core/config.ts` — `loadConfig()` and `saveConfig()`: walk up from cwd
-  looking for `.gbrain/config.json`, fall back to `~/.gbrain/`
-- `src/commands/init.ts` — default `dbPath` to project-local `.gbrain/brain.pglite`
-  instead of `~/.gbrain/brain.pglite`. Add `--global` flag for old behavior.
-- Tests: `test/config.test.ts` — test local-first discovery
-
-**Acceptance:**
-- `gbrain init` in a project creates `.gbrain/config.json` and `.gbrain/brain.pglite`
-  in the project directory
+**Acceptance:** ✅
+- `gbrain init` creates `.gbrain/config.json` and `.gbrain/brain.pglite` in project dir
 - `gbrain init --global` creates at `~/.gbrain/` (old behavior)
-- `gbrain doctor`, `gbrain import`, etc. find local config automatically
+- All commands find local config automatically via walk-up
 - Two worktrees can each have independent databases
-- `bun test` passes
+- `bun test` passes (600 tests, 0 failures)
 
-### Slice 2b — Notion Import (second attempt)
+### Slice 2b — Notion Import (second attempt) ⬅ NEXT
 
-**Depends on:** Slice 2a (local-first config)
+**Depends on:** Slice 2a (local-first config) ✅
 
 **Goal:** Same as original Slice 2 but with fixes from first POC attempt.
 
@@ -273,7 +274,7 @@ Phase 2 validates Phase 1. Gaps discovered by the user are fixed in Phase 1's re
 | Slug collisions from duplicate Notion pages | **Active** | Migrate skill updated to investigate before appending `-2`. |
 | PGLite single-writer lock contention | **Active** | Don't run concurrent gbrain commands. Future: add warning or queue. |
 | `gbrain list` caps at 50, `-n` flag ignored | **Active** | Needs tool fix in gbrain-alt. Not yet filed as separate issue. |
-| Global config/DB prevents per-project isolation | **Active** | Blocked by `gbrain-alt-j53`. Fix is local-first config (Slice 2a). |
+| Global config/DB prevents per-project isolation | ✅ Resolved | Local-first config (Slice 2a) implemented. Walk-up discovery + `--global` flag. |
 
 ---
 
