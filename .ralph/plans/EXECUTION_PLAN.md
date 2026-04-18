@@ -283,7 +283,65 @@ Backwards compatible — pages with one `---` still parse as compiled_truth + ti
 - `serializeMarkdown()` includes relationships zone when provided ✅
 - `bun test` passes (608 tests, 0 failures) ✅
 
+### Slice 3b-pre — Notion Import Data Quality Fixup ⬅ NEXT
+
+**Goal:** Investigate and fix the five data quality issues found in the second
+Notion import POC (2026-04-18). These must be resolved before Slice 3b can wire
+up the links table, because Slice 3b assumes frontmatter relations contain slug
+paths, not display names.
+
+**Issues discovered (from spot-checking `ralph-brain/brain/`):**
+
+| # | Issue | Example | Severity |
+|---|-------|---------|----------|
+| 1 | **`type` values are plural** | `type: tasks`, `type: people`, `type: aors` instead of `task`, `person`, `aor` | High — `PageType` union won't match; DB queries by type will miss pages |
+| 2 | **Relations store display names, not slug paths** | `assigned_projects: Agentic Infrastructure` instead of `assigned_projects: [projects/agentic-infrastructure]` | **Blocker for 3b** — links table needs slug paths to create `from_slug → to_slug` rows |
+| 3 | **`_events` field uses underscore prefix** | `_events: Joe / Stuart 1-1` instead of `related_events: [events/joe-stuart-1-1]` | Medium — field won't be recognized by relation extraction |
+| 4 | **Raw Notion export paths in compiled truth** | `../Projects/Agentic%20Infrastructure%20324ec333f05b81128f65fe4d532ae016.md` in page body | Medium — pollutes search results, not navigable |
+| 5 | **`parent_page` instead of `parent`** | `parent_page: Agentic Infrastructure` on projects | Low — wrong field name, also stores display name not slug |
+
+**Investigation needed:**
+
+1. Is this a migrate skill issue (skill instructions don't tell agent to slugify
+   relations) or a Notion export artifact (CSV/markdown export uses display names)?
+   → Read `skills/migrate/SKILL.md` and sample Notion export files in
+   `ralph-brain/exports/` to determine root cause.
+
+2. For issue #2: can we resolve display names → slugs post-import (match on title),
+   or must the migrate skill do it during conversion? Post-import resolution is
+   simpler but requires all pages to already be imported.
+
+3. For issue #1: is the migrate skill producing plural types, or is Notion exporting
+   them that way? Determine whether fix belongs in the skill or in `inferType()`.
+
+4. For issue #4: does the migrate skill strip Notion paths, or is it passing them
+   through? Check if the skill has a cleanup step.
+
+**Likely fixes (TBD after investigation):**
+
+- **Option A (migrate skill fix):** Update skill instructions to slugify relations
+  during conversion, normalize type to singular, strip Notion paths, rename
+  `_events` → `related_events`, rename `parent_page` → `parent`.
+- **Option B (post-import fixup command):** New `gbrain normalize` or a fixup
+  script that walks all pages, resolves display names to slugs via title lookup,
+  fixes plural types, renames fields. Idempotent.
+- **Option C (hybrid):** Fix the skill for future imports + run a one-time fixup
+  on existing ralph-brain data.
+
+**Acceptance:**
+- Root cause identified for each of the 5 issues
+- Fix implemented (skill update, tool code, or fixup script)
+- ralph-brain pages have: singular `type` values, slug paths in relation arrays,
+  `related_events` (not `_events`), clean compiled truth (no Notion paths),
+  `parent` (not `parent_page`)
+- `bun test` passes
+- All existing pages re-importable after fixes
+
+---
+
 ### Slice 3b — Frontmatter → Links Table
+
+**Depends on:** Slice 3b-pre (relations must contain slug paths, not display names)
 
 **Goal:** `gbrain sync` and `gbrain import` populate the `links` table from
 frontmatter relation arrays. Known relation keys (`assigned_*`, `related_*`,
@@ -386,15 +444,17 @@ Slice 2b  ─── Notion import POC ──────────────
 
 Phase 3 — gbrain-alt, branch: internal-adaptation ⬅ CURRENT
 ──────────────────────────────────────────────────
-Slice 3a  ─── Three-zone parser ───────────────────── ✅
+Slice 3a      ─── Three-zone parser ─────────────────── ✅
   │
-Slice 3b  ─── Frontmatter → links table ──────────── 
+Slice 3b-pre  ─── Notion import data quality fixup ─── ⬅ NEXT
   │
-Slice 3c  ─── Relationships zone generation ───────── 
+Slice 3b      ─── Frontmatter → links table ────────── (blocked by 3b-pre)
   │
-Slice 3d  ─── Reverse-link reconstruction ─────────── 
+Slice 3c      ─── Relationships zone generation ─────── 
   │
-Slice 3e  ─── Documentation + E2E validation ──────── 
+Slice 3d      ─── Reverse-link reconstruction ───────── 
+  │
+Slice 3e      ─── Documentation + E2E validation ───── 
 ```
 
 Each step leaves the codebase green. Each commit is independently useful.
@@ -417,6 +477,12 @@ Phase 2 validated Phase 1. Phase 3 fixes gaps discovered during Phase 2.
 | Relations not navigable in markdown viewers | ✅ Designed | Four-zone structure with generated relationships zone (Slice 3c). |
 | Sync writes back to user files (new behavior) | **Active** | Users must understand relationships zone is generated. Git diff shows changes. |
 | Pages with literal `---` in compiled truth | **Active** | `splitBody()` splits on first `---`. Workaround: use `***` or `___` for horizontal rules in content. |
+| Notion migrate produces plural type values | **Active (3b-pre)** | `type: tasks` instead of `type: task`. Breaks PageType matching and DB queries. Needs investigation: skill vs export artifact. |
+| Relations store display names not slug paths | **Active (3b-pre)** | `assigned_projects: Agentic Infrastructure` instead of `[projects/agentic-infrastructure]`. Blocks Slice 3b entirely. |
+| `_events` field uses wrong name | **Active (3b-pre)** | Underscore prefix not recognized by relation extraction. Rename to `related_events`. |
+| Raw Notion paths in compiled truth | **Active (3b-pre)** | `../Projects/Foo%20324ec...md` pollutes search. Skill or post-import cleanup needed. |
+| `parent_page` instead of `parent` | **Active (3b-pre)** | Wrong field name + display name instead of slug. |
+| Publish command won't strip relationships zone | **Active (3e)** | `makeShareable()` regex only matches `## Timeline`, not `## Relationships`. Fix when Slice 3c generates the zone. |
 | Existing pages with multiple `---` reinterpreted | **Active** | Three-zone parser treats middle section as relationships. Pages with extra `---` in their timeline will have that content moved to relationships zone. Mitigation: only pages explicitly given a relationships zone via sync will have two separators. Existing two-zone pages are backwards compatible. |
 
 ---
