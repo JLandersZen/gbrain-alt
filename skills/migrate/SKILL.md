@@ -38,12 +38,30 @@ Universal migration from any wiki, note tool, or brain system into GBrain.
 | JSON | Structured data | Map keys to page fields |
 | Roam | JSON export | Convert block structure to pages |
 
-## Phases
+## Prerequisites
+
+Before migrating, verify gbrain is set up. If any of these fail, run the
+**setup skill** (`skills/setup/SKILL.md`) first — it handles init, API key
+discovery, AGENTS.md injection, and health verification.
+
+1. **gbrain is initialized.** Run `gbrain doctor --json`. If it fails with
+   "no config found" or connection errors, gbrain hasn't been set up yet.
+2. **API keys are available.** Check that `OPENAI_API_KEY` is set in the
+   environment before starting any embedding work. Without it, keyword search
+   works but semantic search and `gbrain embed` will fail. Do NOT start
+   embeddings in the background without confirming the key exists first.
+3. **Output directory is permanent.** Migration output goes in `brain/` (at the
+   project root), not `tmp/` or any ephemeral location. These files are the
+   source of truth alongside the database — they must be committed to git.
+   Do NOT create the entity subdirectories in advance; the migration creates
+   them as needed based on the imported data.
+
+## General Workflow
 
 1. **Assess the source.** What format? How many files? What structure?
 2. **Plan the mapping.** How do source fields map to gbrain fields (type, title, tags, compiled_truth, timeline)?
 3. **Test with a sample.** Import 5-10 files, verify by reading them back from gbrain and exporting.
-4. **Bulk import.** Import the full directory into gbrain.
+4. **Bulk import.** Import the full directory into gbrain. Output to `brain/` at the project root.
 5. **Verify.** Check gbrain health and statistics, spot-check pages.
 6. **Build links.** Extract cross-references from content and create typed links in gbrain.
 
@@ -72,8 +90,18 @@ Obsidian-specific:
 1. Export from Notion: Settings > Export > Markdown & CSV
 2. Notion exports nested directories with UUIDs in filenames
 3. Strip UUIDs from filenames for clean slugs
-4. Map Notion's database properties to frontmatter
-5. Import the cleaned directory into gbrain
+4. **Watch for truncated titles.** Notion truncates long page titles in export
+   filenames and CSV columns. When building relations between pages, resolve
+   by matching against the full title from the page content, not the filename.
+   If a relation reference doesn't resolve, search for partial matches before
+   giving up.
+5. Map Notion's database properties to frontmatter
+6. **Handle slug collisions.** If two Notion pages produce the same slug
+   (same title, different UUIDs), investigate before appending a `-2` suffix.
+   They may be genuine duplicates worth merging. Check page content and
+   properties to decide.
+7. Import the cleaned directory into gbrain. Output to `brain/` at the
+   project root.
 
 ## CSV Migration
 
@@ -82,6 +110,19 @@ For tabular data (e.g., CRM exports, contact lists):
 2. Use a designated column as the slug (e.g., name)
 3. Use another column as compiled_truth (e.g., notes)
 4. Store each page in gbrain
+
+## Post-Migration: Update Agent Config
+
+After a successful migration, update the project's AGENTS.md (or CLAUDE.md) to
+reflect that gbrain is now the source of truth. Add or update these sections:
+
+1. **gbrain is SoR.** The `brain/` directory and the gbrain database together
+   are the knowledge base. Pages in `brain/` are permanent, version-controlled
+   markdown — not ephemeral intermediates.
+2. **Brain-first lookup.** For any entity question, check gbrain before grep.
+   (See setup skill Phase D for the full lookup protocol.)
+3. **Sync-after-write.** After creating or updating any brain page, run
+   `gbrain sync --no-pull --no-embed` to keep the index current.
 
 ## Verification
 
