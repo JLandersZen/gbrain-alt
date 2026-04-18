@@ -183,6 +183,15 @@ to `type: resource` in Slice 1b, making the correct count 6. Fixed and verified.
 - `test/config-discovery.test.ts` — 9 tests covering discovery, override, reset,
   global fallback, save/load roundtrip, env var precedence.
 
+**Documentation:** ✅ (2026-04-18, Beads: `gbrain-alt-8hn`)
+- `docs/guides/local-first-config.md` — New guide: discovery algorithm, credential
+  precedence, usage examples, programmatic API, scope table
+- `docs/guides/README.md` — Updated index with new guide
+- `docs/ENGINES.md` — Fixed stale `~/.gbrain/brain.db` path, added config discovery link
+- `README.md` — Updated Setup details to reference project-local config
+- `CLAUDE.md` — Added `src/core/config.ts` and `docs/guides/local-first-config.md` to key files
+- `src/core/db.ts` — Updated error message to reference `gbrain config show`
+
 **Acceptance:** ✅
 - `gbrain init` creates `.gbrain/config.json` and `.gbrain/brain.pglite` in project dir
 - `gbrain init --global` creates at `~/.gbrain/` (old behavior)

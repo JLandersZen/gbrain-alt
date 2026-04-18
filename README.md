@@ -299,7 +299,260 @@ The repo is the system of record. GBrain is the retrieval layer. The agent reads
 
 ## The Knowledge Model
 
-Every page follows the compiled truth + timeline pattern:
+The numbers above aren't theoretical. They come from a real deployment documented in [GBRAIN_SKILLPACK.md](docs/GBRAIN_SKILLPACK.md) — a reference architecture for how a production AI agent uses gbrain as its knowledge backbone.
+
+**Read the skillpack.** It's the most important doc in this repo. It tells your agent HOW to use gbrain, not just what commands exist:
+
+- **The brain-agent loop** — the read-write cycle that makes knowledge compound
+- **Entity detection** — spawn on every message, capture people, organizations, projects
+- **Enrichment pipeline** — 7-step protocol with tiered API spend
+- **Meeting ingestion** — transcript to brain pages with entity propagation
+- **Source attribution** — every fact traceable to where it came from
+- **Reference cron schedule** — 20+ recurring jobs that keep the brain alive
+
+Without the skillpack, your agent has tools but no playbook. With it, the agent knows when to read, when to write, how to enrich, and how to keep the brain alive autonomously. It's a pattern book, not a tutorial. "Here's what works, here's why."
+
+## How gbrain fits with OpenClaw/Hermes
+
+GBrain is world knowledge — people, organizations, projects, meetings, resources, your original thinking. It's the long-term memory of what you know about the world.
+
+[OpenClaw](https://openclaw.ai) agent memory (`memory_search`) is operational state — preferences, decisions, session context, how the agent should behave.
+
+They're complementary:
+
+| Layer | What it stores | How to query |
+|-------|---------------|-------------|
+| **gbrain** | People, organizations, projects, meetings, resources | `gbrain search`, `gbrain query`, `gbrain get` |
+| **Agent memory** | Preferences, decisions, operational config | `memory_search` |
+| **Session context** | Current conversation | (automatic) |
+
+All three should be checked. GBrain for facts about the world. Memory for agent config. Session for immediate context. Install via `openclaw skills install gbrain`.
+
+## The compounding effect
+
+The real value isn't search. It's what happens after a few weeks of use.
+
+You take a meeting with someone. The agent writes a brain page for them, links it to their organization, tags it with the project. Next week someone mentions that organization in a different context. The agent already has the full picture: who you talked to, what you discussed, what threads are open. You didn't do anything. The brain already had it.
+
+## Install
+
+### Prerequisites
+
+**Zero-config start (PGLite).** `gbrain init` creates a local embedded Postgres brain. No accounts, no server, no API keys. Keyword search works immediately. Add API keys later for vector search and LLM-powered features.
+
+**For production scale (Supabase).** When your brain outgrows local, `gbrain migrate --to supabase` moves everything to managed Postgres:
+
+| Dependency | What it's for | How to get it |
+|------------|--------------|---------------|
+| **Supabase account** | Postgres + pgvector database | [supabase.com](https://supabase.com) (Pro tier, $25/mo for 8GB) |
+| **OpenAI API key** | Embeddings (text-embedding-3-large) | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| **Anthropic API key** | Multi-query expansion + LLM chunking (Haiku) | [console.anthropic.com](https://console.anthropic.com) |
+
+Set the API keys as environment variables:
+
+```bash
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+The Supabase connection URL is configured during `gbrain init --supabase`. The OpenAI and Anthropic SDKs read their keys from the environment automatically.
+
+Without an OpenAI key, search still works (keyword only, no vector search). Without an Anthropic key, search still works (no multi-query expansion, no LLM chunking).
+
+### GBrain without OpenClaw
+
+GBrain works with any AI agent, any MCP client, or no agent at all. Three paths:
+
+#### Standalone CLI
+
+Install globally and use gbrain from the terminal:
+
+```bash
+bun add -g github:garrytan/gbrain
+gbrain init                     # PGLite (local, no server needed)
+gbrain import ~/git/brain/      # index your markdown
+gbrain query "what themes show up across my notes?"
+```
+
+Run `gbrain --help` for the full list of commands.
+
+#### MCP server (Claude Code, Cursor, Windsurf, etc.)
+
+GBrain exposes 30 MCP tools via stdio. Add this to your MCP client config:
+
+**Claude Code** (`~/.claude/server.json`):
+```json
+{
+  "mcpServers": {
+    "gbrain": {
+      "command": "gbrain",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+**Cursor** (Settings > MCP Servers):
+```json
+{
+  "gbrain": {
+    "command": "gbrain",
+    "args": ["serve"]
+  }
+}
+```
+
+This gives your agent `get_page`, `put_page`, `search`, `query`, `add_link`, `traverse_graph`, `sync_brain`, `file_upload`, and 22 more tools. All generated from the same operation definitions as the CLI.
+
+#### Remote MCP Server (Claude Desktop, Cowork, Perplexity)
+
+Access your brain from any device, any AI client. Run `gbrain serve` behind an HTTP
+server with a public tunnel:
+
+```bash
+# Set up a public tunnel (see recipes/ngrok-tunnel.md)
+ngrok http 8787 --url your-brain.ngrok.app
+
+# Create a bearer token for your client
+bun run src/commands/auth.ts create "claude-desktop"
+```
+
+Then add to your AI client:
+- **Claude Code:** `claude mcp add gbrain -t http https://your-brain.ngrok.app/mcp -H "Authorization: Bearer TOKEN"`
+- **Claude Desktop:** Settings > Integrations > Add (NOT JSON config, [details](docs/mcp/CLAUDE_DESKTOP.md))
+- **Perplexity:** Settings > Connectors > Add remote MCP ([details](docs/mcp/PERPLEXITY.md))
+
+Per-client setup guides: [`docs/mcp/`](docs/mcp/DEPLOY.md)
+
+ChatGPT support requires OAuth 2.1 (not yet implemented). Self-hosted alternatives (Tailscale Funnel, ngrok) documented in [`docs/mcp/ALTERNATIVES.md`](docs/mcp/ALTERNATIVES.md).
+
+**The tools are not enough.** Your agent also needs the playbook: read [GBRAIN_SKILLPACK.md](docs/GBRAIN_SKILLPACK.md) and paste the relevant sections into your agent's system prompt or project instructions. The skillpack tells the agent WHEN and HOW to use each tool: read before responding, write after learning, detect entities on every message, back-link everything.
+
+The skill markdown files in `skills/` are standalone instruction sets. Copy them into your agent's context:
+
+| Skill file | What the agent learns |
+|------------|----------------------|
+| `skills/ingest/SKILL.md` | How to import meetings, docs, articles |
+| `skills/query/SKILL.md` | 3-layer search with synthesis and citations |
+| `skills/maintain/SKILL.md` | Periodic health: stale pages, orphans, dead links |
+| `skills/enrich/SKILL.md` | Enrich pages from external APIs |
+| `skills/briefing/SKILL.md` | Daily briefing with meeting prep |
+| `skills/migrate/SKILL.md` | Migrate from Obsidian, Notion, Logseq, etc. |
+
+#### As a TypeScript library
+
+```bash
+bun add github:garrytan/gbrain
+```
+
+```typescript
+import { createEngine } from 'gbrain';
+
+// PGLite (local, no server)
+const engine = createEngine('pglite');
+await engine.connect({ database_path: '~/.gbrain/brain.pglite' });
+await engine.initSchema();
+
+// Or Postgres (Supabase / self-hosted)
+// const engine = createEngine('postgres');
+// await engine.connect({ database_url: process.env.DATABASE_URL });
+// await engine.initSchema();
+
+// Search
+const results = await engine.searchKeyword('startup growth');
+
+// Read
+const page = await engine.getPage('people/pedro-franceschi');
+
+// Write
+await engine.putPage('resources/superlinear-returns', {
+  type: 'resource',
+  title: 'Superlinear Returns',
+  compiled_truth: 'Paul Graham argues that returns in many fields are superlinear...',
+  timeline: '- 2023-10-01: Published on paulgraham.com',
+});
+```
+
+The `BrainEngine` interface is pluggable. `createEngine()` accepts `'pglite'` or `'postgres'`. See `docs/ENGINES.md` for details.
+
+PGLite (default) requires no external database. For production scale (7K+ pages, multi-device, remote MCP), use Supabase Pro ($25/mo).
+
+## Upgrade
+
+```bash
+cd ~/gbrain && git pull origin main && bun install
+```
+
+Then run `gbrain init` to apply any schema migrations (idempotent, safe to re-run).
+
+## Setup details
+
+`gbrain init` defaults to PGLite (embedded Postgres 17.5 via WASM). No accounts, no server. Config saved to `.gbrain/config.json` in the current directory (use `--global` for `~/.gbrain/`). See [Local-First Config](docs/guides/local-first-config.md) for discovery rules.
+
+```bash
+gbrain init                     # PGLite (default)
+gbrain init --supabase          # guided wizard for Supabase
+gbrain init --url <conn>        # any Postgres with pgvector
+```
+
+Import is idempotent. Re-running skips unchanged files (SHA-256 content hash). ~30s for text import of 7,000 files, ~10-15 min for embedding.
+
+## File storage and migration
+
+Brain repos accumulate binary files: images, PDFs, audio recordings, raw API responses. A repo with 3,000 markdown pages might have 2GB of binaries making `git clone` painful.
+
+GBrain has a three-stage migration lifecycle that moves binaries to cloud storage while preserving every reference:
+
+```
+Local files in git repo
+  │
+  ▼  gbrain files mirror <dir>
+Cloud copy exists, local files untouched
+  │
+  ▼  gbrain files redirect <dir>
+Local files replaced with .redirect breadcrumbs (tiny YAML pointers)
+  │
+  ▼  gbrain files clean <dir>
+Breadcrumbs removed, cloud is the only copy
+```
+
+Every stage is reversible until `clean`:
+
+```bash
+# Stage 1: Copy to cloud (git repo unchanged)
+gbrain files mirror ~/git/brain/attachments/ --dry-run   # preview first
+gbrain files mirror ~/git/brain/attachments/
+
+# Stage 2: Replace local files with breadcrumbs
+gbrain files redirect ~/git/brain/attachments/ --dry-run
+gbrain files redirect ~/git/brain/attachments/
+# Your git repo just dropped from 2GB to 50MB
+
+# Undo: download everything back from cloud
+gbrain files restore ~/git/brain/attachments/
+
+# Stage 3: Remove breadcrumbs (irreversible, cloud is the only copy)
+gbrain files clean ~/git/brain/attachments/ --yes
+```
+
+**Storage backends:** S3-compatible (AWS S3, Cloudflare R2, MinIO), Supabase Storage, or local filesystem. Configured during `gbrain init`.
+
+Additional file commands:
+
+```bash
+gbrain files list [slug]           # list files for a page (or all)
+gbrain files upload <file> --page <slug>  # upload file linked to page
+gbrain files sync <dir>            # bulk upload directory
+gbrain files verify                # verify all uploads match local
+gbrain files status                # show migration status of directories
+gbrain files unmirror <dir>        # remove mirror marker (files stay in cloud)
+```
+
+The file resolver (`src/core/file-resolver.ts`) handles fallback automatically: if a local file is missing, it checks for a `.redirect` breadcrumb, then a `.supabase` marker, and resolves to the cloud URL. Code that references files by path keeps working after migration.
+
+## The knowledge model
+
+Every page in the brain follows the compiled truth + timeline pattern:
 
 ```markdown
 ---

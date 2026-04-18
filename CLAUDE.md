@@ -27,6 +27,7 @@ strict behavior when unset.
 - `src/core/pglite-schema.ts` — PGLite-specific DDL (pgvector, pg_trgm, triggers)
 - `src/core/postgres-engine.ts` — Postgres + pgvector implementation (Supabase / self-hosted). `addLinksBatch` / `addTimelineEntriesBatch` use `INSERT ... SELECT FROM unnest($1::text[], ...) JOIN pages ON CONFLICT DO NOTHING RETURNING 1` — 4-5 array params regardless of batch size, sidesteps the 65535-parameter cap. As of v0.12.3, `searchKeyword` / `searchVector` scope `statement_timeout` via `sql.begin` + `SET LOCAL` so the GUC dies with the transaction instead of leaking across the pooled postgres.js connection (contributed by @garagon). `getEmbeddingsByChunkIds` uses `tryParseEmbedding` so one corrupt row skips+warns instead of killing the query.
 - `src/core/utils.ts` — Shared SQL utilities extracted from postgres-engine.ts. Exports `parseEmbedding(value)` (throws on unknown input, used by migration + ingest paths where data integrity matters) and as of v0.12.3 `tryParseEmbedding(value)` (returns `null` + warns once per process, used by search/rescore paths where availability matters more than strictness).
+- `src/core/config.ts` — Local-first config discovery (walk-up from cwd), credential precedence (env > file)
 - `src/core/db.ts` — Connection management, schema initialization
 - `src/commands/migrate-engine.ts` — Bidirectional engine migration (`gbrain migrate --to supabase/pglite`)
 - `src/core/import-file.ts` — importFromFile + importFromContent (chunk + embed + tags)
@@ -76,6 +77,7 @@ strict behavior when unset.
 - `docs/architecture/infra-layer.md` — Shared infrastructure documentation
 - `docs/ethos/THIN_HARNESS_FAT_SKILLS.md` — Architecture philosophy essay
 - `docs/ethos/MARKDOWN_SKILLS_AS_RECIPES.md` — "Homebrew for Personal AI" essay
+- `docs/guides/local-first-config.md` — Project-scoped `.gbrain/` with walk-up discovery and global fallback
 - `docs/guides/repo-architecture.md` — Two-repo pattern (agent vs brain)
 - `docs/guides/sub-agent-routing.md` — Model routing table for sub-agents
 - `docs/guides/skill-development.md` — 5-step skill development cycle + MECE
