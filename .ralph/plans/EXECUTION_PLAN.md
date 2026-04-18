@@ -155,41 +155,84 @@ to `type: resource` in Slice 1b, making the correct count 6. Fixed and verified.
 
 ## Phase 2: Notion Import POC
 
-**Workspace:** `ralph-brain` worktree (alongside `ralph-pva`, same parent folder).
-The user creates this worktree and does the Notion export. No new Notion-specific
-code goes into gbrain-alt.
+**Workspace:** `ralph-brain` worktree at `/Users/jlanders/gitlab_local/ralph-brain`
+(created via `bd worktree create` from `ralph-pva`). Notion export goes in
+`ralph-brain/exports/`. Imported brain pages go in `ralph-brain/brain/`.
 
-### Slice 2 — Install + Notion Import Test
+### Slice 2a — Local-first Config ⬅ NEXT (blocker for Slice 2b)
 
-**Goal:** Install the updated gbrain (with PARA+GTD taxonomy from Phase 1) into
-`ralph-brain`, export from Notion, and run the existing migrate skill to validate
-end-to-end import. No new Notion-specific code in gbrain-alt.
+**Beads:** `gbrain-alt-j53` (P1, open)
+
+**Problem:** gbrain config (`~/.gbrain/config.json`) and PGLite database
+(`~/.gbrain/brain.pglite`) are global singletons. No per-project isolation.
+Worktrees, experimentation, and multiple brains all collide. Blowing away a
+POC worktree doesn't reset the database.
+
+**Fix:** Look for `.gbrain/config.json` in the current directory (walking up
+to repo root) first, fall back to `~/.gbrain/`. When found locally,
+`database_path` defaults to `.gbrain/brain.pglite` relative to that config.
+`gbrain init` should create `.gbrain/` in the current project by default,
+with a `--global` flag for the old behavior.
+
+**Files to change:**
+- `src/core/config.ts` — `loadConfig()` and `saveConfig()`: walk up from cwd
+  looking for `.gbrain/config.json`, fall back to `~/.gbrain/`
+- `src/commands/init.ts` — default `dbPath` to project-local `.gbrain/brain.pglite`
+  instead of `~/.gbrain/brain.pglite`. Add `--global` flag for old behavior.
+- Tests: `test/config.test.ts` — test local-first discovery
+
+**Acceptance:**
+- `gbrain init` in a project creates `.gbrain/config.json` and `.gbrain/brain.pglite`
+  in the project directory
+- `gbrain init --global` creates at `~/.gbrain/` (old behavior)
+- `gbrain doctor`, `gbrain import`, etc. find local config automatically
+- Two worktrees can each have independent databases
+- `bun test` passes
+
+### Slice 2b — Notion Import (second attempt)
+
+**Depends on:** Slice 2a (local-first config)
+
+**Goal:** Same as original Slice 2 but with fixes from first POC attempt.
+
+**What changed since first attempt:**
+- Migrate skill updated with prerequisites section (checks init, API keys,
+  permanent output dir), Notion-specific fixes (truncated titles, slug collision
+  investigation), and post-migration AGENTS.md update
+- ralph-brain worktree recreated fresh via `bd worktree create`
+- gbrain skills installed in `ralph-brain/.claude/skills/gbrain-*/`
+- User needs to re-download Notion export (old one was in deleted worktree)
 
 **Steps:**
-1. Install gbrain from the `internal-adaptation` branch into `ralph-brain`:
-   `cd <ralph-brain> && bun add <path-to-gbrain-alt>`
-   (or `bun link` from gbrain-alt, then `bun link gbrain` in ralph-brain)
-2. `gbrain init` (PGLite)
-3. Create the 9 entity directories per spec §2.6:
-   `contexts/ aors/ projects/ tasks/ events/ resources/ interests/ people/ organizations/`
-4. `gbrain doctor` — confirm clean
-5. Export from Notion UI (Markdown & CSV format)
-6. Run the migrate skill against the Notion export directory
-7. `gbrain import <export-dir> --no-embed` then `gbrain embed --stale`
-8. Validate: `gbrain search`, `gbrain graph`, inspect imported pages
+1. Fix local-first config (Slice 2a) so `gbrain init` creates per-project DB
+2. In ralph-brain: `gbrain init` (creates `.gbrain/` locally)
+3. Set up `.env` with `OPENAI_API_KEY` and `OPENAI_BASE_URL` (company AI gateway)
+4. Download fresh Notion export into `ralph-brain/exports/`
+5. Run migrate skill — it now checks prerequisites, handles truncated titles,
+   investigates slug collisions, and outputs to `brain/` (permanent)
+6. `gbrain import brain/ --no-embed` then verify `OPENAI_API_KEY` is set
+   before running `gbrain embed --stale`
+7. Validate: `gbrain search`, `gbrain list -n 999`, spot-check pages
+
+**First POC findings (2026-04-16) to watch for:**
+- Notion export truncates long titles → relations don't resolve (migrate skill
+  now warns about this)
+- Don't create entity subdirs in advance (import creates them)
+- Check `OPENAI_API_KEY` before starting embeddings
+- PGLite is single-writer — don't run concurrent gbrain commands
+- `gbrain list` caps at 50 — may need a tool fix if `-n` flag is still broken
 
 **Acceptance:**
 - `gbrain --version` works in `ralph-brain`
-- `gbrain doctor` passes
-- 9 entity directories exist
+- `gbrain doctor` passes with project-local database
 - Notion pages import with correct types via `inferType()`
 - Properties map to frontmatter, relations map to links
-- `gbrain search` returns meaningful results across imported data
+- `gbrain search` returns meaningful results
 - `gbrain graph` traverses relationships
+- AGENTS.md updated to reflect gbrain as SoR
 
-**What comes back to gbrain-alt:** Any tool-level gaps discovered during import
-get fixed on `internal-adaptation` as targeted slices, scoped by whatever
-actually breaks. The goal is minimal drift from upstream.
+**What comes back to gbrain-alt:** Tool-level gaps discovered during import
+get fixed on `internal-adaptation` as targeted slices.
 
 ---
 
@@ -222,12 +265,15 @@ Phase 2 validates Phase 1. Gaps discovered by the user are fixed in Phase 1's re
 
 ## Risk Register
 
-| Risk | Mitigation |
-|------|-----------|
-| Old type references in files not covered by audit | Post-Slice-1c grep sweep catches stragglers. Acceptance criteria includes zero-hit check. |
-| Benchmark search quality regresses with new types | Benchmark page content stays the same; only `type` field values change. Search is type-agnostic. Compare scores before/after. |
-| Migrate skill can't infer new type from Notion export directory names | Fix `inferType()` in gbrain-alt if needed. Notion exports nest by database name, which may not match our directory convention. |
-| Frontmatter properties not preserved through import | The generic import pipeline reads YAML frontmatter as-is. If Notion export doesn't produce YAML frontmatter, that's a gap the user will discover and report back. |
+| Risk | Status | Mitigation |
+|------|--------|-----------|
+| Old type references in files not covered by audit | ✅ Resolved | Post-Slice-1c grep sweep found zero hits. |
+| Benchmark search quality regresses with new types | ✅ Resolved | Benchmark ran clean. Search is type-agnostic. |
+| Notion export truncates long page titles | **Active** | Migrate skill updated to warn. Agent should match on full title from page content, not filename. |
+| Slug collisions from duplicate Notion pages | **Active** | Migrate skill updated to investigate before appending `-2`. |
+| PGLite single-writer lock contention | **Active** | Don't run concurrent gbrain commands. Future: add warning or queue. |
+| `gbrain list` caps at 50, `-n` flag ignored | **Active** | Needs tool fix in gbrain-alt. Not yet filed as separate issue. |
+| Global config/DB prevents per-project isolation | **Active** | Blocked by `gbrain-alt-j53`. Fix is local-first config (Slice 2a). |
 
 ---
 
