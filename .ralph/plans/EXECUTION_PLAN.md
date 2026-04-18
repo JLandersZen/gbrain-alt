@@ -251,30 +251,148 @@ get fixed on `internal-adaptation` as targeted slices.
 
 ---
 
+## Phase 3: Four-Zone Page Structure + Relation-Aware Sync
+
+**Workspace:** This repo (`gbrain-alt`), branch `internal-adaptation`
+**Spec:** §5 (Four-Zone Page Structure and Relation Storage)
+
+Gaps discovered during Phase 2 (Notion Import POC), fed back as targeted fixes.
+
+### Slice 3a — Three-Zone Parser
+
+**Goal:** `splitBody()` returns `{ compiled_truth, relationships, timeline }`.
+Backwards compatible — pages with one `---` still parse as compiled_truth + timeline.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `src/core/markdown.ts` | Extend `splitBody()` to split on two `---` separators. Return `relationships` as third field. |
+| `src/core/types.ts` | Add `relationships` field to `ParsedMarkdown` |
+| `test/markdown.test.ts` | New tests: two-separator split, one-separator backwards compat, no-separator, empty zones |
+
+**Acceptance:**
+- `splitBody()` with two `---` returns three zones
+- `splitBody()` with one `---` returns compiled_truth + timeline (relationships empty)
+- `splitBody()` with no `---` returns compiled_truth only
+- `bun test` passes
+
+### Slice 3b — Frontmatter → Links Table
+
+**Goal:** `gbrain sync` and `gbrain import` populate the `links` table from
+frontmatter relation arrays. Known relation keys (`assigned_*`, `related_*`,
+`parent`, `organizations`, `people`, `delegate`, `manager`, `supers`, `subs`)
+are parsed into typed links.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `src/core/import-file.ts` | After parsing frontmatter, extract relation keys → upsert links |
+| `src/core/markdown.ts` or new `src/core/relations.ts` | Relation key → link_type mapping, extraction logic |
+| `test/import-file.test.ts` | Tests: frontmatter with relations produces correct links |
+
+**Acceptance:**
+- Import a page with `assigned_projects: [projects/foo]` → links table has `assigned_project` link
+- Import a page with `parent: aors/bar` → links table has `parent_aor` link
+- Existing pages without relations still import correctly
+- `bun test` passes
+
+### Slice 3c — Relationships Zone Generation
+
+**Goal:** `gbrain sync` regenerates the relationships zone in the markdown file
+from frontmatter relation arrays. Titles are resolved from the database or target
+file frontmatter. The zone is placed between two `---` separators.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `src/core/markdown.ts` or new `src/core/relations.ts` | `renderRelationshipsZone()` — frontmatter → markdown links |
+| `src/commands/sync.ts` | After import, write back file with regenerated relationships zone |
+| `src/core/import-file.ts` | Support writing relationships zone on import |
+| `test/markdown.test.ts` | Tests: relationships rendering, title resolution, roundtrip |
+
+**Acceptance:**
+- Page with `related_people: [people/joe-landers]` gets relationships zone with `[Joe Landers](people/joe-landers.md)`
+- Page with no relations gets no relationships zone (two-zone format)
+- Sync writes back to file, git diff shows the generated zone
+- `bun test` passes
+
+### Slice 3d — Reverse-Link Reconstruction
+
+**Goal:** Post-import pass that reconstructs missing reverse relations. If Task A
+has `assigned_projects: [projects/x]`, then Project X gets `tasks: [tasks/a]` added
+to its frontmatter.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `src/core/relations.ts` (or similar) | `reconstructReverseLinks()` — iterate pages, build reverse index, patch frontmatter |
+| `src/commands/sync.ts` or `src/commands/import.ts` | Call reverse-link reconstruction after import |
+| `test/` (new or existing) | Tests: one-sided relation → both sides populated |
+
+**Acceptance:**
+- Import one-sided Notion data → both sides have relations in frontmatter
+- Reverse reconstruction is idempotent (running twice doesn't duplicate)
+- `bun test` passes
+
+### Slice 3e — Documentation + E2E Validation
+
+**Goal:** All docs reflect four-zone structure. E2E tests validate the full pipeline.
+
+**Files changed:**
+
+| File | Change |
+|------|--------|
+| `docs/guides/compiled-truth.md` | Update to four-zone structure |
+| `docs/GBRAIN_RECOMMENDED_SCHEMA.md` | Page templates show four zones |
+| `skills/_brain-filing-rules.md` | Note about relationships zone |
+| `skills/migrate/SKILL.md` | Notion one-sided export caveat, reverse reconstruction |
+| `README.md` | Update knowledge model example to four zones |
+| `CLAUDE.md` | Update architecture description |
+| E2E tests | Full sync roundtrip with relations |
+
+**Acceptance:**
+- All docs show four-zone structure
+- E2E: import → sync → verify relationships zone + links table
+- `bun test` and `bun run test:e2e` pass
+
+---
+
 ## Sequencing Summary
 
 ```
-Phase 1 — gbrain-alt, branch: internal-adaptation
+Phase 1 — gbrain-alt, branch: internal-adaptation ✅ DONE
 ──────────────────────────────────────────────────
-Slice 1a  ─── Core code + unit tests ──────────────── commit
-  │
-Slice 1b  ─── Remaining tests + benchmark ─────────── commit
-  │
-Slice 1c  ─── Documentation ───────────────────────── commit
-  │
-          ─── E2E validation pass ──────────────────── fix + commit if needed
+Slice 1a  ─── Core code + unit tests ──────────────── ✅
+Slice 1b  ─── Remaining tests + benchmark ─────────── ✅
+Slice 1c  ─── Documentation ───────────────────────── ✅
+          ─── E2E validation pass ──────────────────── ✅
 
-Phase 2 — ralph-brain worktree (alongside ralph-pva)
+Phase 2 — ralph-brain worktree + gbrain-alt ✅ DONE (POC complete)
 ──────────────────────────────────────────────────
-Slice 2   ─── Install updated gbrain + handoff ─────── notify user
+Slice 2a  ─── Local-first config ──────────────────── ✅
+Slice 2b  ─── Notion import POC ───────────────────── ✅ (ran by user)
                                                         ↓
-            User tests Notion import ──────────────── gaps feed back
-                                                        ↓
-            Fix gaps on internal-adaptation ────────── commit as needed
+            Gaps identified ───────────────────────── feed into Phase 3
+
+Phase 3 — gbrain-alt, branch: internal-adaptation ⬅ CURRENT
+──────────────────────────────────────────────────
+Slice 3a  ─── Three-zone parser ───────────────────── 
+  │
+Slice 3b  ─── Frontmatter → links table ──────────── 
+  │
+Slice 3c  ─── Relationships zone generation ───────── 
+  │
+Slice 3d  ─── Reverse-link reconstruction ─────────── 
+  │
+Slice 3e  ─── Documentation + E2E validation ──────── 
 ```
 
 Each step leaves the codebase green. Each commit is independently useful.
-Phase 2 validates Phase 1. Gaps discovered by the user are fixed in Phase 1's repo.
+Phase 2 validated Phase 1. Phase 3 fixes gaps discovered during Phase 2.
 
 ---
 
@@ -289,6 +407,10 @@ Phase 2 validates Phase 1. Gaps discovered by the user are fixed in Phase 1's re
 | PGLite single-writer lock contention | **Active** | Don't run concurrent gbrain commands. Future: add warning or queue. |
 | `gbrain list` caps at 50, `-n` flag ignored | **Active** | Needs tool fix in gbrain-alt. Not yet filed as separate issue. |
 | Global config/DB prevents per-project isolation | ✅ Resolved | Local-first config (Slice 2a) implemented. Walk-up discovery + `--global` flag. |
+| Notion exports one-sided relations | ✅ Designed | Reverse-link reconstruction post-pass (Slice 3d). Not Notion-specific. |
+| Relations not navigable in markdown viewers | ✅ Designed | Four-zone structure with generated relationships zone (Slice 3c). |
+| Sync writes back to user files (new behavior) | **Active** | Users must understand relationships zone is generated. Git diff shows changes. |
+| Pages with literal `---` in compiled truth | **Active** | `splitBody()` splits on first `---`. Workaround: use `***` or `___` for horizontal rules in content. |
 
 ---
 
