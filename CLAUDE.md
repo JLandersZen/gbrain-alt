@@ -2,10 +2,8 @@
 
 GBrain is a personal knowledge brain and GStack mod for agent platforms. Pluggable
 engines: PGLite (embedded Postgres via WASM, zero-config default) or Postgres + pgvector
-+ hybrid search in a managed Supabase instance. `gbrain init` defaults to PGLite;
-suggests Supabase for 1000+ files. GStack teaches agents how to code. GBrain teaches
-agents everything else: brain ops, signal detection, content ingestion, enrichment,
-cron scheduling, reports, identity, and access control.
++ hybrid search in a managed Supabase instance. `gbrain init` creates a project-local `.gbrain/` directory by
+default; use `--global` for the old `~/.gbrain/` behavior. Suggests Supabase for 1000+ files.
 
 ## Architecture
 
@@ -149,6 +147,7 @@ without a database. E2E tests skip gracefully when `DATABASE_URL` is not set.
 Unit tests: `test/markdown.test.ts` (frontmatter parsing), `test/chunkers/recursive.test.ts`
 (chunking), `test/parity.test.ts` (operations contract
 parity), `test/cli.test.ts` (CLI structure), `test/config.test.ts` (config redaction),
+`test/config-discovery.test.ts` (local-first config walk-up discovery, setConfigDir, resetConfigDir),
 `test/files.test.ts` (MIME/hash), `test/import-file.test.ts` (import pipeline),
 `test/upgrade.test.ts` (schema migrations),
 `test/file-migration.test.ts` (file migration), `test/file-resolver.test.ts` (file resolution),
