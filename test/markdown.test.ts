@@ -21,8 +21,43 @@ Paul Graham argues that startups should do unscalable things early on.
     expect(parsed.title).toBe("Do Things That Don't Scale");
     expect(parsed.tags).toEqual(['startups', 'growth']);
     expect(parsed.compiled_truth).toContain('unscalable things');
+    expect(parsed.relationships).toBe('');
     expect(parsed.timeline).toContain('Published on paulgraham.com');
     expect(parsed.timeline).toContain('batch kickoff talk');
+  });
+
+  test('parses four-zone structure (compiled_truth + relationships + timeline)', () => {
+    const md = `---
+type: project
+title: GBrain Adaptation
+assigned_aors:
+  - aors/engineering-leadership
+related_people:
+  - people/joe-landers
+---
+
+This project adapts GBrain for personal use.
+
+---
+
+## Relationships
+- **Assigned AORs:** [Engineering Leadership](aors/engineering-leadership.md)
+- **Related People:** [Joe Landers](people/joe-landers.md)
+
+---
+
+- 2026-04-16: Imported from Notion
+`;
+    const parsed = parseMarkdown(md);
+    expect(parsed.type).toBe('project');
+    expect(parsed.title).toBe('GBrain Adaptation');
+    expect(parsed.compiled_truth).toBe('This project adapts GBrain for personal use.');
+    expect(parsed.relationships).toContain('## Relationships');
+    expect(parsed.relationships).toContain('[Engineering Leadership](aors/engineering-leadership.md)');
+    expect(parsed.relationships).toContain('[Joe Landers](people/joe-landers.md)');
+    expect(parsed.timeline).toContain('Imported from Notion');
+    expect(parsed.frontmatter.assigned_aors).toEqual(['aors/engineering-leadership']);
+    expect(parsed.frontmatter.related_people).toEqual(['people/joe-landers']);
   });
 
   test('handles no timeline separator', () => {
@@ -36,6 +71,7 @@ Performance compounds over time.
 `;
     const parsed = parseMarkdown(md);
     expect(parsed.compiled_truth).toContain('superlinear');
+    expect(parsed.relationships).toBe('');
     expect(parsed.timeline).toBe('');
   });
 
@@ -47,6 +83,7 @@ title: Empty Page
 `;
     const parsed = parseMarkdown(md);
     expect(parsed.compiled_truth).toBe('');
+    expect(parsed.relationships).toBe('');
     expect(parsed.timeline).toBe('');
   });
 
@@ -90,30 +127,67 @@ Content
 });
 
 describe('splitBody', () => {
-  test('splits at first standalone ---', () => {
+  test('splits at first standalone --- (two-zone)', () => {
     const body = 'Above the line\n\n---\n\nBelow the line';
-    const { compiled_truth, timeline } = splitBody(body);
+    const { compiled_truth, relationships, timeline } = splitBody(body);
     expect(compiled_truth).toContain('Above the line');
+    expect(relationships).toBe('');
     expect(timeline).toContain('Below the line');
   });
 
   test('returns all as compiled_truth if no separator', () => {
     const body = 'Just some content\nWith multiple lines';
-    const { compiled_truth, timeline } = splitBody(body);
+    const { compiled_truth, relationships, timeline } = splitBody(body);
     expect(compiled_truth).toBe(body);
+    expect(relationships).toBe('');
     expect(timeline).toBe('');
   });
 
   test('handles --- at end of content', () => {
     const body = 'Content here\n\n---\n';
-    const { compiled_truth, timeline } = splitBody(body);
+    const { compiled_truth, relationships, timeline } = splitBody(body);
     expect(compiled_truth).toContain('Content here');
+    expect(relationships).toBe('');
     expect(timeline.trim()).toBe('');
+  });
+
+  test('splits into three zones with two separators', () => {
+    const body = 'Compiled truth\n\n---\n\nRelationships zone\n\n---\n\nTimeline entries';
+    const { compiled_truth, relationships, timeline } = splitBody(body);
+    expect(compiled_truth).toContain('Compiled truth');
+    expect(relationships).toContain('Relationships zone');
+    expect(timeline).toContain('Timeline entries');
+  });
+
+  test('handles empty relationships zone between two separators', () => {
+    const body = 'Compiled truth\n\n---\n\n---\n\nTimeline entries';
+    const { compiled_truth, relationships, timeline } = splitBody(body);
+    expect(compiled_truth).toContain('Compiled truth');
+    expect(relationships.trim()).toBe('');
+    expect(timeline).toContain('Timeline entries');
+  });
+
+  test('three or more separators: third+ goes into timeline', () => {
+    const body = 'Truth\n\n---\n\nRelations\n\n---\n\nTimeline part 1\n\n---\n\nTimeline part 2';
+    const { compiled_truth, relationships, timeline } = splitBody(body);
+    expect(compiled_truth).toContain('Truth');
+    expect(relationships).toContain('Relations');
+    expect(timeline).toContain('Timeline part 1');
+    expect(timeline).toContain('---');
+    expect(timeline).toContain('Timeline part 2');
+  });
+
+  test('ignores leading --- when no content before it', () => {
+    const body = '\n---\n\nActual compiled truth\n\n---\n\nTimeline';
+    const { compiled_truth, relationships, timeline } = splitBody(body);
+    expect(compiled_truth).toContain('Actual compiled truth');
+    expect(relationships).toBe('');
+    expect(timeline).toContain('Timeline');
   });
 });
 
 describe('serializeMarkdown', () => {
-  test('round-trips through parse and serialize', () => {
+  test('round-trips through parse and serialize (two-zone)', () => {
     const original = `---
 type: resource
 title: Do Things That Don't Scale
@@ -142,13 +216,75 @@ Paul Graham argues that startups should do unscalable things early on.
     expect(reparsed.type).toBe(parsed.type);
     expect(reparsed.title).toBe(parsed.title);
     expect(reparsed.compiled_truth).toBe(parsed.compiled_truth);
+    expect(reparsed.relationships).toBe('');
     expect(reparsed.timeline).toBe(parsed.timeline);
     expect(reparsed.frontmatter.custom).toBe('value');
+  });
+
+  test('round-trips four-zone structure', () => {
+    const original = `---
+type: project
+title: GBrain Adaptation
+assigned_aors:
+  - aors/engineering-leadership
+---
+
+Adapting GBrain for personal use.
+
+---
+
+## Relationships
+- **Assigned AORs:** [Engineering Leadership](aors/engineering-leadership.md)
+
+---
+
+- 2026-04-16: Imported from Notion
+`;
+    const parsed = parseMarkdown(original);
+    const serialized = serializeMarkdown(
+      parsed.frontmatter,
+      parsed.compiled_truth,
+      parsed.timeline,
+      { type: parsed.type, title: parsed.title, tags: parsed.tags, relationships: parsed.relationships },
+    );
+
+    const reparsed = parseMarkdown(serialized);
+    expect(reparsed.compiled_truth).toBe(parsed.compiled_truth);
+    expect(reparsed.relationships).toBe(parsed.relationships);
+    expect(reparsed.timeline).toBe(parsed.timeline);
+  });
+
+  test('omits relationships zone when empty', () => {
+    const serialized = serializeMarkdown(
+      {},
+      'Some truth',
+      '- 2026-01-01: Event',
+      { type: 'resource', title: 'Test', tags: [] },
+    );
+    expect(serialized).not.toMatch(/---[\s\S]*---[\s\S]*---[\s\S]*---/);
+    const parsed = parseMarkdown(serialized);
+    expect(parsed.compiled_truth).toBe('Some truth');
+    expect(parsed.relationships).toBe('');
+    expect(parsed.timeline).toBe('- 2026-01-01: Event');
+  });
+
+  test('includes relationships zone when provided', () => {
+    const relationships = '## Relationships\n- **People:** [Alice](people/alice.md)';
+    const serialized = serializeMarkdown(
+      {},
+      'Some truth',
+      '- 2026-01-01: Event',
+      { type: 'resource', title: 'Test', tags: [], relationships },
+    );
+    const parsed = parseMarkdown(serialized);
+    expect(parsed.compiled_truth).toBe('Some truth');
+    expect(parsed.relationships).toBe(relationships);
+    expect(parsed.timeline).toBe('- 2026-01-01: Event');
   });
 });
 
 describe('parseMarkdown edge cases', () => {
-  test('handles content with multiple --- separators', () => {
+  test('handles content with multiple --- separators (three-zone interpretation)', () => {
     const md = `---
 type: resource
 title: Test
@@ -158,16 +294,15 @@ First section.
 
 ---
 
-Timeline part 1.
+Middle section.
 
 ---
 
-More timeline.`;
+More content.`;
     const parsed = parseMarkdown(md);
-    // Only splits at the FIRST standalone ---
     expect(parsed.compiled_truth.trim()).toBe('First section.');
-    expect(parsed.timeline).toContain('Timeline part 1.');
-    expect(parsed.timeline).toContain('More timeline.');
+    expect(parsed.relationships.trim()).toBe('Middle section.');
+    expect(parsed.timeline).toContain('More content.');
   });
 
   test('handles frontmatter without type or title', () => {
@@ -191,6 +326,7 @@ Some content.`;
   test('handles empty string', () => {
     const parsed = parseMarkdown('');
     expect(parsed.compiled_truth).toBe('');
+    expect(parsed.relationships).toBe('');
     expect(parsed.timeline).toBe('');
   });
 

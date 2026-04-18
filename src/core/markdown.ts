@@ -5,6 +5,7 @@ import { slugifyPath } from './sync.ts';
 export interface ParsedMarkdown {
   frontmatter: Record<string, unknown>;
   compiled_truth: string;
+  relationships: string;
   timeline: string;
   slug: string;
   type: PageType;
@@ -15,27 +16,31 @@ export interface ParsedMarkdown {
 /**
  * Parse a markdown file with YAML frontmatter into its components.
  *
- * Structure:
+ * Four-zone structure:
  *   ---
- *   type: concept
+ *   type: resource
  *   title: Do Things That Don't Scale
  *   tags: [startups, growth]
+ *   assigned_aors: [aors/engineering]
  *   ---
  *   Compiled truth content here...
+ *   ---
+ *   ## Relationships
+ *   - **Assigned AORs:** [Engineering](aors/engineering.md)
  *   ---
  *   Timeline content here...
  *
  * The first --- pair is YAML frontmatter (handled by gray-matter).
- * After frontmatter, the body is split at the first standalone ---
- * (a line containing only --- with optional whitespace).
- * Everything before is compiled_truth, everything after is timeline.
- * If no body --- exists, all content is compiled_truth.
+ * After frontmatter, the body is split at standalone --- separators:
+ *   Two separators → compiled_truth, relationships, timeline
+ *   One separator  → compiled_truth, timeline (relationships empty)
+ *   No separator   → compiled_truth only
  */
 export function parseMarkdown(content: string, filePath?: string): ParsedMarkdown {
   const { data: frontmatter, content: body } = matter(content);
 
-  // Split body at first standalone ---
-  const { compiled_truth, timeline } = splitBody(body);
+  // Split body at standalone --- separators
+  const { compiled_truth, relationships, timeline } = splitBody(body);
 
   // Extract metadata from frontmatter
   const type = (frontmatter.type as PageType) || inferType(filePath);
@@ -53,6 +58,7 @@ export function parseMarkdown(content: string, filePath?: string): ParsedMarkdow
   return {
     frontmatter: cleanFrontmatter,
     compiled_truth: compiled_truth.trim(),
+    relationships: relationships.trim(),
     timeline: timeline.trim(),
     slug,
     type,
@@ -62,45 +68,53 @@ export function parseMarkdown(content: string, filePath?: string): ParsedMarkdow
 }
 
 /**
- * Split body content at first standalone --- separator.
- * Returns compiled_truth (before) and timeline (after).
+ * Split body content at standalone --- separators.
+ *
+ * Two separators → { compiled_truth, relationships, timeline }
+ * One separator  → { compiled_truth, relationships: '', timeline }
+ * No separator   → { compiled_truth, relationships: '', timeline: '' }
  */
-export function splitBody(body: string): { compiled_truth: string; timeline: string } {
-  // Match a line that is only --- (with optional whitespace)
-  // Must not be at the very start (that would be frontmatter)
+export function splitBody(body: string): { compiled_truth: string; relationships: string; timeline: string } {
   const lines = body.split('\n');
-  let splitIndex = -1;
+  const separators: number[] = [];
 
   for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    if (trimmed === '---') {
-      // Skip if this is the very first non-empty line (leftover from frontmatter parsing)
+    if (lines[i].trim() === '---') {
       const beforeContent = lines.slice(0, i).join('\n').trim();
-      if (beforeContent.length > 0) {
-        splitIndex = i;
-        break;
+      if (beforeContent.length > 0 || separators.length > 0) {
+        separators.push(i);
       }
     }
   }
 
-  if (splitIndex === -1) {
-    return { compiled_truth: body, timeline: '' };
+  if (separators.length === 0) {
+    return { compiled_truth: body, relationships: '', timeline: '' };
   }
 
-  const compiled_truth = lines.slice(0, splitIndex).join('\n');
-  const timeline = lines.slice(splitIndex + 1).join('\n');
-  return { compiled_truth, timeline };
+  if (separators.length === 1) {
+    const compiled_truth = lines.slice(0, separators[0]).join('\n');
+    const timeline = lines.slice(separators[0] + 1).join('\n');
+    return { compiled_truth, relationships: '', timeline };
+  }
+
+  // Two or more separators: first split = end of compiled_truth,
+  // second split = end of relationships
+  const compiled_truth = lines.slice(0, separators[0]).join('\n');
+  const relationships = lines.slice(separators[0] + 1, separators[1]).join('\n');
+  const timeline = lines.slice(separators[1] + 1).join('\n');
+  return { compiled_truth, relationships, timeline };
 }
 
 /**
  * Serialize a page back to markdown format.
- * Produces: frontmatter + compiled_truth + --- + timeline
+ * Produces: frontmatter + compiled_truth [+ --- + relationships] + --- + timeline
+ * Omits the relationships zone if empty (backwards compatible two-zone format).
  */
 export function serializeMarkdown(
   frontmatter: Record<string, unknown>,
   compiled_truth: string,
   timeline: string,
-  meta: { type: PageType; title: string; tags: string[] },
+  meta: { type: PageType; title: string; tags: string[]; relationships?: string },
 ): string {
   // Build full frontmatter including type, title, tags
   const fullFrontmatter: Record<string, unknown> = {
@@ -115,6 +129,10 @@ export function serializeMarkdown(
   const yamlContent = matter.stringify('', fullFrontmatter).trim();
 
   let body = compiled_truth;
+  const relationships = meta.relationships || '';
+  if (relationships) {
+    body += '\n\n---\n\n' + relationships;
+  }
   if (timeline) {
     body += '\n\n---\n\n' + timeline;
   }

@@ -258,7 +258,9 @@ get fixed on `internal-adaptation` as targeted slices.
 
 Gaps discovered during Phase 2 (Notion Import POC), fed back as targeted fixes.
 
-### Slice 3a — Three-Zone Parser
+### Slice 3a — Three-Zone Parser ✅ DONE
+
+**Completed:** 2026-04-18. All 608 tests pass (23 markdown tests, up from 17). Beads: `gbrain-alt-9qw`.
 
 **Goal:** `splitBody()` returns `{ compiled_truth, relationships, timeline }`.
 Backwards compatible — pages with one `---` still parse as compiled_truth + timeline.
@@ -267,15 +269,19 @@ Backwards compatible — pages with one `---` still parse as compiled_truth + ti
 
 | File | Change |
 |------|--------|
-| `src/core/markdown.ts` | Extend `splitBody()` to split on two `---` separators. Return `relationships` as third field. |
-| `src/core/types.ts` | Add `relationships` field to `ParsedMarkdown` |
-| `test/markdown.test.ts` | New tests: two-separator split, one-separator backwards compat, no-separator, empty zones |
+| `src/core/markdown.ts` | Extended `splitBody()` to detect two `---` separators. Returns `relationships` as third field. Updated `parseMarkdown()` to pass through `relationships`. Updated `serializeMarkdown()` to accept optional `relationships` in meta and emit four-zone format. Updated JSDoc to describe four-zone structure. |
+| `src/core/types.ts` | `ParsedMarkdown` interface gets `relationships: string` field. `Page` interface unchanged (relationships is a parsing-layer concern, not a DB column). |
+| `test/markdown.test.ts` | 6 new tests: three-zone split, empty relationships zone, 3+ separators, four-zone round-trip, serialize with/without relationships. All existing tests updated to assert `relationships` field. |
 
-**Acceptance:**
-- `splitBody()` with two `---` returns three zones
-- `splitBody()` with one `---` returns compiled_truth + timeline (relationships empty)
-- `splitBody()` with no `---` returns compiled_truth only
-- `bun test` passes
+**Design decision:** `relationships` lives in `ParsedMarkdown` (parsing layer) but NOT in `Page` (database layer). The DB has no `relationships` column — this zone is generated from frontmatter and written back to the markdown file by sync. The database stores `compiled_truth` and `timeline` only.
+
+**Acceptance:** ✅
+- `splitBody()` with two `---` returns three zones ✅
+- `splitBody()` with one `---` returns compiled_truth + timeline (relationships empty) ✅
+- `splitBody()` with no `---` returns compiled_truth only ✅
+- `serializeMarkdown()` omits relationships zone when empty (backwards compatible) ✅
+- `serializeMarkdown()` includes relationships zone when provided ✅
+- `bun test` passes (608 tests, 0 failures) ✅
 
 ### Slice 3b — Frontmatter → Links Table
 
@@ -380,7 +386,7 @@ Slice 2b  ─── Notion import POC ──────────────
 
 Phase 3 — gbrain-alt, branch: internal-adaptation ⬅ CURRENT
 ──────────────────────────────────────────────────
-Slice 3a  ─── Three-zone parser ───────────────────── 
+Slice 3a  ─── Three-zone parser ───────────────────── ✅
   │
 Slice 3b  ─── Frontmatter → links table ──────────── 
   │
@@ -411,6 +417,7 @@ Phase 2 validated Phase 1. Phase 3 fixes gaps discovered during Phase 2.
 | Relations not navigable in markdown viewers | ✅ Designed | Four-zone structure with generated relationships zone (Slice 3c). |
 | Sync writes back to user files (new behavior) | **Active** | Users must understand relationships zone is generated. Git diff shows changes. |
 | Pages with literal `---` in compiled truth | **Active** | `splitBody()` splits on first `---`. Workaround: use `***` or `___` for horizontal rules in content. |
+| Existing pages with multiple `---` reinterpreted | **Active** | Three-zone parser treats middle section as relationships. Pages with extra `---` in their timeline will have that content moved to relationships zone. Mitigation: only pages explicitly given a relationships zone via sync will have two separators. Existing two-zone pages are backwards compatible. |
 
 ---
 
