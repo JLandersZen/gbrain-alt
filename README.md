@@ -373,7 +373,7 @@ Then run `gbrain init` to apply any schema migrations (idempotent, safe to re-ru
 
 ## Setup details
 
-`gbrain init` defaults to PGLite (embedded Postgres 17.5 via WASM). No accounts, no server. Config saved to `~/.gbrain/config.json`.
+`gbrain init` defaults to PGLite (embedded Postgres 17.5 via WASM). No accounts, no server. Config saved to `.gbrain/config.json` in the current directory (use `--global` for `~/.gbrain/`). See [Local-First Config](docs/guides/local-first-config.md) for discovery rules.
 
 ```bash
 gbrain init                     # PGLite (default)

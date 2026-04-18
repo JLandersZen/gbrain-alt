@@ -40,5 +40,6 @@ Standalone guides broken out from the GBrain Skillpack. Each covers one pattern 
 
 ## Infrastructure
 
+- [Local-First Config](local-first-config.md) -- Project-scoped `.gbrain/` with walk-up discovery and global fallback
 - [Repo Architecture](repo-architecture.md) -- Two-repo separation of agent behavior from world knowledge
 - [Upgrades and Auto-Update](upgrades-auto-update.md) -- Conversational upgrade notifications and post-upgrade migration

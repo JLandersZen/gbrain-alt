@@ -21,6 +21,7 @@ markdown files (tool-agnostic, work with both CLI and plugin contexts).
 - `src/core/pglite-schema.ts` — PGLite-specific DDL (pgvector, pg_trgm, triggers)
 - `src/core/postgres-engine.ts` — Postgres + pgvector implementation (Supabase / self-hosted)
 - `src/core/utils.ts` — Shared SQL utilities extracted from postgres-engine.ts
+- `src/core/config.ts` — Local-first config discovery (walk-up from cwd), credential precedence (env > file)
 - `src/core/db.ts` — Connection management, schema initialization
 - `src/commands/migrate-engine.ts` — Bidirectional engine migration (`gbrain migrate --to supabase/pglite`)
 - `src/core/import-file.ts` — importFromFile + importFromContent (chunk + embed + tags)
@@ -46,6 +47,7 @@ markdown files (tool-agnostic, work with both CLI and plugin contexts).
 - `docs/architecture/infra-layer.md` — Shared infrastructure documentation
 - `docs/ethos/THIN_HARNESS_FAT_SKILLS.md` — Architecture philosophy essay
 - `docs/ethos/MARKDOWN_SKILLS_AS_RECIPES.md` — "Homebrew for Personal AI" essay
+- `docs/guides/local-first-config.md` — Project-scoped `.gbrain/` with walk-up discovery and global fallback
 - `docs/guides/repo-architecture.md` — Two-repo pattern (agent vs brain)
 - `docs/guides/sub-agent-routing.md` — Model routing table for sub-agents
 - `docs/guides/skill-development.md` — 5-step skill development cycle + MECE

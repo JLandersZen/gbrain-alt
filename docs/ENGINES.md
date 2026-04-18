@@ -158,7 +158,7 @@ RRF fusion, multi-query expansion, and 4-layer dedup are engine-agnostic. They o
 - Uses `pglite-schema.ts` for DDL (pgvector extension, pg_trgm, triggers, indexes)
 - Parameterized queries throughout (shared utilities in `src/core/utils.ts`)
 - `hybridSearch` keyword-only fallback when `OPENAI_API_KEY` is not set
-- Data stored at `~/.gbrain/brain.db` (configurable)
+- Data stored at `.gbrain/brain.pglite` (project-local by default, `~/.gbrain/brain.pglite` with `--global`)
 - pgvector HNSW index for cosine similarity vector search (same as Postgres)
 - tsvector + ts_rank for full-text search (same as Postgres)
 - pg_trgm for fuzzy slug resolution (same as Postgres)
@@ -191,7 +191,7 @@ RRF fusion, multi-query expansion, and 4-layer dedup are engine-agnostic. They o
    }
    ```
    The factory uses dynamic imports so engines are only loaded when selected.
-3. Store engine type in `~/.gbrain/config.json`: `{ "engine": "myengine", ... }`
+3. Store engine type in `.gbrain/config.json` (project-local) or `~/.gbrain/config.json` (global): `{ "engine": "myengine", ... }`. See [Local-First Config](guides/local-first-config.md) for discovery rules.
 4. Add tests. The test suite should be engine-agnostic where possible... same test cases, different engine constructor.
 5. Document in this file + add a design doc in `docs/`
 
