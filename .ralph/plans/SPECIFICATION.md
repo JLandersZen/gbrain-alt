@@ -867,8 +867,10 @@ compatible.
    slug paths to page titles (from DB or frontmatter of target files), render as
    markdown links, and write back to the file between the two body `---` separators.
 
-3. **Update page content in DB.** Parse compiled truth, relationships, and timeline
-   into their respective database columns. Chunk and embed as before.
+3. **Update page content in DB.** Parse compiled truth and timeline into their
+   respective database columns. The relationships zone is NOT stored in the DB
+   (no schema change) — it exists only in the markdown file. Chunk and embed
+   compiled_truth and timeline as before.
 
 **Sync writes back to the user's file.** This is a change from current behavior
 where sync is read-only from the repo's perspective. The user runs `gbrain sync`,
