@@ -204,16 +204,21 @@ to `type: resource` in Slice 1b, making the correct count 6. Fixed and verified.
 - gbrain skills installed in `ralph-brain/.claude/skills/gbrain-*/`
 - User needs to re-download Notion export (old one was in deleted worktree)
 
-**Steps:**
-1. Fix local-first config (Slice 2a) so `gbrain init` creates per-project DB
-2. In ralph-brain: `gbrain init` (creates `.gbrain/` locally)
-3. Set up `.env` with `OPENAI_API_KEY` and `OPENAI_BASE_URL` (company AI gateway)
-4. Download fresh Notion export into `ralph-brain/exports/`
-5. Run migrate skill — it now checks prerequisites, handles truncated titles,
+**Prerequisites completed:**
+- ✅ Slice 2a (local-first config) shipped
+- ✅ `gbrain` linked from gbrain-alt (v0.9.3 with local-first config)
+- ✅ `gbrain init` run in ralph-brain — `.gbrain/config.json` + `.gbrain/brain.pglite` created
+- ✅ `.gitignore` updated to exclude `.gbrain/`
+- ✅ `gbrain doctor` passes in ralph-brain
+
+**Remaining steps (run from ralph-brain worktree, NOT gbrain-alt):**
+1. Set up `.env` with `OPENAI_API_KEY` and `OPENAI_BASE_URL` (company AI gateway)
+2. User downloads fresh Notion export into `ralph-brain/exports/`
+3. Run migrate skill — it now checks prerequisites, handles truncated titles,
    investigates slug collisions, and outputs to `brain/` (permanent)
-6. `gbrain import brain/ --no-embed` then verify `OPENAI_API_KEY` is set
+4. `gbrain import brain/ --no-embed` then verify `OPENAI_API_KEY` is set
    before running `gbrain embed --stale`
-7. Validate: `gbrain search`, `gbrain list -n 999`, spot-check pages
+5. Validate: `gbrain search`, `gbrain list -n 999`, spot-check pages
 
 **First POC findings (2026-04-16) to watch for:**
 - Notion export truncates long titles → relations don't resolve (migrate skill
