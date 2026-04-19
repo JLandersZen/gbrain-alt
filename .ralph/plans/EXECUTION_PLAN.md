@@ -12,8 +12,10 @@ know exactly which group broke.
 
 **Branch strategy:**
 - `internal-adaptation-backup` — snapshot of current state (safety net)
-- `internal-adaptation-v2` — new branch from `origin/master`, receives replayed work
+- `internal-adaptation` — the old branch (DO NOT modify, source for cherry-picks)
+- `internal-adaptation-v2` — new branch from `origin/master`, receives replayed work (WORK HERE)
 - When complete: force-push to `internal-adaptation`, delete `-v2`
+- Stash `stash@{0}` has uncommitted `.ralph/` changes from `internal-adaptation` (safe to ignore)
 
 **Work tracking:** Use beads throughout. Create an issue for each slice before
 starting it (`bd create`). Mark `in_progress` when working, `bd close` when the
