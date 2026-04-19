@@ -573,7 +573,7 @@ third sync is up_to_date).
 | 5 | Four-zone parser (sentinel rewrite) | **HIGH** | **DONE** (094d9a4) |
 | 6 | Normalize + relations pipeline | Medium | **DONE** (9e6ee18) |
 | 7 | Sync --subdir + final commits | Medium | **DONE** (48120ba) |
-| 8 | Validation + branch swap + push | Low | **NEARLY DONE** — validation passed (1547 unit, 148 E2E), bugs fixed, 6 docs written, `internal-adaptation-v2` pushed to remote. Only branch swap remains (destructive, needs user OK). See beads `gbrain-alt-ckn`. |
+| 8 | Validation + branch swap + push | Low | **BLOCKED on user confirmation** — validation passed (1552 unit, 148 E2E), bugs fixed, 6 docs written, `internal-adaptation-v2` pushed to remote. Only branch swap remains: `git branch -m internal-adaptation internal-adaptation-old && git branch -m internal-adaptation-v2 internal-adaptation && git push --force-with-lease origin internal-adaptation`. Then archive plan+spec to `.ralph/plans/archive/`. See beads `gbrain-alt-ckn`. |
 
 **Total: ~10–14 days (2 sprints)**
 
