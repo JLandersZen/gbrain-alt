@@ -406,7 +406,7 @@ Accept upstream's ParsedPage, add our fields/calls alongside.
 - [x] Upstream's ParsedPage interface preserved (auto-link hook still works)
 - [x] Upstream's link-extraction.ts and our relations.ts coexist
 - [x] All tests pass (1526 unit pass, 13 skip, 47 E2E fail = DB-required, unchanged)
-- [ ] Committed
+- [x] Committed (9e6ee18)
 
 ### Conflict resolutions
 
