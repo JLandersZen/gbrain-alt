@@ -29,6 +29,12 @@ const PARENT_LINK_TYPES: Record<string, string> = {
   organizations: 'parent_org',
 };
 
+const FRONTMATTER_LINK_TYPES = new Set([
+  ...Object.values(FIELD_TO_LINK_TYPE),
+  ...Object.values(PARENT_LINK_TYPES),
+  'parent',
+]);
+
 const NOTION_UUID_RE = /[0-9a-f]{32}/;
 
 export interface RelationLink {
@@ -101,12 +107,14 @@ export async function syncPageLinks(
   relations: RelationLink[],
 ): Promise<{ added: number; removed: number }> {
   const existingLinks = await tx.getLinks(sourceSlug);
-  const newTargets = new Set(relations.map(r => r.targetSlug));
+  const newTargets = new Set(relations.map(r => `${r.targetSlug}\u0000${r.linkType}`));
 
   let removed = 0;
   for (const existing of existingLinks) {
-    if (!newTargets.has(existing.to_slug)) {
-      await tx.removeLink(sourceSlug, existing.to_slug);
+    if (!FRONTMATTER_LINK_TYPES.has(existing.link_type)) continue;
+    const key = `${existing.to_slug}\u0000${existing.link_type}`;
+    if (!newTargets.has(key)) {
+      await tx.removeLink(sourceSlug, existing.to_slug, existing.link_type);
       removed++;
     }
   }

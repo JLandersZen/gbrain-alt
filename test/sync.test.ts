@@ -298,4 +298,17 @@ describe('sync --subdir source-level checks', () => {
     expect(source).toContain('extractLinksForSlugs(engine, fileBase');
     expect(source).toContain('extractTimelineForSlugs(engine, fileBase');
   });
+
+  test('sync builds titleMap and passes it to importFile', async () => {
+    const source = await Bun.file(new URL('../src/commands/sync.ts', import.meta.url)).text();
+    expect(source).toContain('buildRepoTitleMap(fileBase)');
+    expect(source).toContain('titleMap');
+    expect(source).toContain('noEmbed, titleMap');
+  });
+
+  test('performFullSync builds titleMap and passes it to runImport', async () => {
+    const source = await Bun.file(new URL('../src/commands/sync.ts', import.meta.url)).text();
+    expect(source).toContain('buildRepoTitleMap(importDir)');
+    expect(source).toContain('{ titleMap }');
+  });
 });

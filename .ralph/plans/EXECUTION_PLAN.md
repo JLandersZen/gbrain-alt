@@ -522,15 +522,32 @@ complete. Pushed to remote.
    - `git push --force-with-lease origin internal-adaptation`
    - Delete old branches after confirming
 
+### Bugs Found and Fixed During Validation
+
+**Bug 1: `syncPageLinks` clobbers auto-link types.** When `importFromContent` calls
+`syncPageLinks` with empty frontmatter relations on an existing page, it removed ALL
+links — including auto-created links from `runAutoLink` (mentions, works_at, attended,
+etc.). Fix: `syncPageLinks` now only removes links whose `link_type` is in the set of
+frontmatter-based types. Auto-link types are left untouched. 5 new unit tests verify.
+
+**Bug 2: Sync doesn't generate relationships zones on disk.** `performSync` and
+`performFullSync` called `importFile` without passing a `titleMap`, so the
+zone-generation code path was never triggered. Fix: sync now builds a `titleMap` from
+repo files and passes it through to `importFile` / `runImport`. 2 new source-level
+regression tests verify. Updated the E2E idempotency test to account for zone
+generation (first sync modifies files → commit → second sync sees those commits →
+third sync is up_to_date).
+
 ### Definition of Done (spec §Post-rebase validation)
 
-- [ ] `bun test` green (all unit tests including upstream's 30+ new files)
-- [ ] `bun run test:e2e` green
-- [ ] Four-zone round-trip: parse → serialize → parse = identical
-- [ ] Relations extraction works end-to-end
-- [ ] Normalize pipeline maps types correctly
-- [ ] `gbrain sync --subdir` works with deadlock fix
-- [ ] Force-pushed to `internal-adaptation`
+- [x] `bun test` green (1552 unit pass, 8 skip; 48 E2E-only fail = DB-required, unchanged pattern)
+- [x] `bun run test:e2e` green (148 pass, 8 skip, 0 fail — up from 146/2)
+- [x] Four-zone round-trip: parse → serialize → parse = identical (tested in markdown.test.ts + split-body-sentinel.test.ts)
+- [x] Relations extraction works end-to-end (17 E2E tests in relations-pipeline.test.ts)
+- [x] Normalize pipeline maps types correctly (tested via import-file.test.ts E2E cases)
+- [x] `gbrain sync --subdir` works with deadlock fix (source-level + E2E regression tests)
+- [x] Pushed to remote (`git push origin internal-adaptation-v2` — succeeded)
+- [ ] Branch swap (force-push to `internal-adaptation`) — deferred, awaiting user confirmation
 - [ ] `internal-adaptation-backup` retained (safety net until confirmed stable)
 
 ### Estimated effort: 1 day
@@ -548,7 +565,7 @@ complete. Pushed to remote.
 | 5 | Four-zone parser (sentinel rewrite) | **HIGH** | **DONE** (094d9a4) |
 | 6 | Normalize + relations pipeline | Medium | **DONE** (9e6ee18) |
 | 7 | Sync --subdir + final commits | Medium | **DONE** (48120ba) |
-| 8 | Validation + branch swap + push | Low | **NEXT** |
+| 8 | Validation + branch swap + push | Low | **IN PROGRESS** — validation done, 2 bugs fixed, branch swap pending user OK |
 
 **Total: ~10–14 days (2 sprints)**
 

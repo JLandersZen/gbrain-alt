@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'bun:test';
-import { extractRelations, flattenLinksNesting, renderRelationshipsZone, reconstructReverseLinks } from '../src/core/relations.ts';
+import { extractRelations, flattenLinksNesting, renderRelationshipsZone, reconstructReverseLinks, syncPageLinks } from '../src/core/relations.ts';
 import { buildTitleMap } from '../src/core/normalize.ts';
+import type { BrainEngine } from '../src/core/engine.ts';
 
 describe('flattenLinksNesting', () => {
   test('flattens links: nested keys to top level', () => {
@@ -599,5 +600,88 @@ describe('reconstructReverseLinks', () => {
     expect(changes).toHaveLength(1);
     expect(changes[0].slug).toBe('people/alice');
     expect(changes[0].patches.organizations).toContain('organizations/acme');
+  });
+});
+
+describe('syncPageLinks', () => {
+  function mockTx(existingLinks: { to_slug: string; link_type: string }[]) {
+    const removed: { slug: string; to: string; type?: string }[] = [];
+    const added: { from: string; to: string; type: string }[] = [];
+    const tx = {
+      getLinks: async () => existingLinks.map(l => ({
+        from_slug: 'test/page',
+        to_slug: l.to_slug,
+        link_type: l.link_type,
+        context: '',
+      })),
+      removeLink: async (from: string, to: string, type?: string) => {
+        removed.push({ slug: from, to, type });
+      },
+      addLink: async (from: string, to: string, ctx: string, type: string) => {
+        added.push({ from, to, type });
+      },
+    } as unknown as BrainEngine;
+    return { tx, removed, added };
+  }
+
+  test('removes stale frontmatter links', async () => {
+    const { tx, removed } = mockTx([
+      { to_slug: 'projects/alpha', link_type: 'assigned_project' },
+      { to_slug: 'projects/beta', link_type: 'assigned_project' },
+    ]);
+    const result = await syncPageLinks(tx, 'tasks/test', [
+      { targetSlug: 'projects/alpha', linkType: 'assigned_project' },
+    ]);
+    expect(result.removed).toBe(1);
+    expect(removed[0].to).toBe('projects/beta');
+    expect(removed[0].type).toBe('assigned_project');
+  });
+
+  test('does NOT remove auto-link types (mentions, works_at, etc.)', async () => {
+    const { tx, removed } = mockTx([
+      { to_slug: 'people/alice', link_type: 'mentions' },
+      { to_slug: 'organizations/acme', link_type: 'works_at' },
+      { to_slug: 'people/bob', link_type: 'attended' },
+      { to_slug: 'organizations/globex', link_type: 'invested_in' },
+      { to_slug: 'people/carol', link_type: 'advises' },
+      { to_slug: 'organizations/startup', link_type: 'founded' },
+      { to_slug: 'resources/article', link_type: 'source' },
+    ]);
+    const result = await syncPageLinks(tx, 'notes/test', []);
+    expect(result.removed).toBe(0);
+    expect(removed).toHaveLength(0);
+  });
+
+  test('removes only frontmatter link types when mixed with auto-link types', async () => {
+    const { tx, removed } = mockTx([
+      { to_slug: 'people/alice', link_type: 'mentions' },
+      { to_slug: 'projects/alpha', link_type: 'assigned_project' },
+      { to_slug: 'people/bob', link_type: 'related_person' },
+    ]);
+    const result = await syncPageLinks(tx, 'tasks/test', []);
+    expect(result.removed).toBe(2);
+    expect(removed.map(r => r.to).sort()).toEqual(['people/bob', 'projects/alpha']);
+  });
+
+  test('adds new frontmatter relations', async () => {
+    const { tx, added } = mockTx([]);
+    const result = await syncPageLinks(tx, 'tasks/test', [
+      { targetSlug: 'projects/alpha', linkType: 'assigned_project' },
+      { targetSlug: 'people/alice', linkType: 'related_person' },
+    ]);
+    expect(result.added).toBe(2);
+    expect(added).toHaveLength(2);
+  });
+
+  test('preserves parent link types during removal', async () => {
+    const { tx, removed } = mockTx([
+      { to_slug: 'projects/old-parent', link_type: 'parent_project' },
+    ]);
+    const result = await syncPageLinks(tx, 'projects/child', [
+      { targetSlug: 'projects/new-parent', linkType: 'parent_project' },
+    ]);
+    expect(result.removed).toBe(1);
+    expect(removed[0].to).toBe('projects/old-parent');
+    expect(removed[0].type).toBe('parent_project');
   });
 });

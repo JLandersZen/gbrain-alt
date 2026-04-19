@@ -1,10 +1,12 @@
-import { existsSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, lstatSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { join, relative, resolve } from 'path';
+import matter from 'gray-matter';
 import type { BrainEngine } from '../core/engine.ts';
 import { importFile } from '../core/import-file.ts';
 import { buildSyncManifest, isSyncable, pathToSlug, scopeToSubdir } from '../core/sync.ts';
 import type { SyncManifest } from '../core/sync.ts';
+import { buildTitleMap, type TitleMap } from '../core/normalize.ts';
 
 export interface SyncResult {
   status: 'up_to_date' | 'synced' | 'first_sync' | 'dry_run';
@@ -33,6 +35,31 @@ function git(repoPath: string, ...args: string[]): string {
     encoding: 'utf-8',
     timeout: 30000,
   }).trim();
+}
+
+function buildRepoTitleMap(dir: string): TitleMap {
+  const entries: { title: string; slug: string }[] = [];
+  function scan(d: string) {
+    for (const entry of readdirSync(d)) {
+      if (entry.startsWith('.') || entry === 'node_modules') continue;
+      const full = join(d, entry);
+      let stat;
+      try { stat = lstatSync(full); } catch { continue; }
+      if (stat.isSymbolicLink()) continue;
+      if (stat.isDirectory()) { scan(full); continue; }
+      if (!entry.endsWith('.md') && !entry.endsWith('.mdx')) continue;
+      try {
+        const raw = readFileSync(full, 'utf-8');
+        const { data } = matter(raw);
+        const rel = relative(dir, full);
+        const slug = rel.replace(/\.(mdx?|md)$/, '');
+        const title = (data.title as string) || slug.split('/').pop()?.replace(/-/g, ' ') || slug;
+        entries.push({ title, slug });
+      } catch { /* skip unreadable files */ }
+    }
+  }
+  scan(dir);
+  return buildTitleMap(entries);
 }
 
 export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<SyncResult> {
@@ -193,6 +220,7 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
     console.log(`Large sync (${totalChanges} files). Importing text, deferring embeddings.`);
   }
 
+  const titleMap = buildRepoTitleMap(fileBase);
   const pagesAffected: string[] = [];
   let chunksCreated = 0;
   const start = Date.now();
@@ -216,7 +244,7 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
     // Reimport at new path (picks up content changes)
     const filePath = join(fileBase, to);
     if (existsSync(filePath)) {
-      const result = await importFile(engine, filePath, to, { noEmbed });
+      const result = await importFile(engine, filePath, to, { noEmbed, titleMap });
       if (result.status === 'imported') chunksCreated += result.chunks;
     }
     pagesAffected.push(newSlug);
@@ -236,7 +264,7 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
     const filePath = join(fileBase, path);
     if (!existsSync(filePath)) continue;
     try {
-      const result = await importFile(engine, filePath, path, { noEmbed });
+      const result = await importFile(engine, filePath, path, { noEmbed, titleMap });
       if (result.status === 'imported') {
         chunksCreated += result.chunks;
         pagesAffected.push(result.slug);
@@ -305,10 +333,11 @@ async function performFullSync(
 ): Promise<SyncResult> {
   const importDir = opts.subdir ? join(repoPath, opts.subdir) : repoPath;
   console.log(`Running full import of ${importDir}...`);
+  const titleMap = buildRepoTitleMap(importDir);
   const { runImport } = await import('./import.ts');
   const importArgs = [importDir];
   if (opts.noEmbed) importArgs.push('--no-embed');
-  await runImport(engine, importArgs);
+  await runImport(engine, importArgs, { titleMap });
 
   // Persist sync state so next sync is incremental (C1 fix: was missing)
   await engine.setConfig('sync.last_commit', headCommit);

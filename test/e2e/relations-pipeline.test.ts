@@ -522,22 +522,35 @@ describeE2E('E2E: Sync Pipeline with Relations', () => {
     const { performSync } = await import('../../src/commands/sync.ts');
     const engine = getEngine();
 
-    const before = readFileSync(join(repoPath, 'tasks/sync-task.md'), 'utf-8');
-
+    // Commit any zone changes from the first sync so git sees a clean state
     execSync('git add -A && git commit -m "zones generated" --allow-empty', {
       cwd: repoPath, stdio: 'pipe',
     });
 
+    // Second sync: processes the zone-commit diff (synced), but no further file changes
     const result = await performSync(engine, {
       repoPath,
       noPull: true,
       noEmbed: true,
     });
 
-    expect(result.status).toBe('up_to_date');
+    const contentAfterSecondSync = readFileSync(join(repoPath, 'tasks/sync-task.md'), 'utf-8');
 
-    const after = readFileSync(join(repoPath, 'tasks/sync-task.md'), 'utf-8');
-    expect(after).toBe(before);
+    // Commit any changes from second sync, then third sync should be up_to_date
+    execSync('git add -A && git commit -m "second sync" --allow-empty', {
+      cwd: repoPath, stdio: 'pipe',
+    });
+
+    const result2 = await performSync(engine, {
+      repoPath,
+      noPull: true,
+      noEmbed: true,
+    });
+
+    expect(result2.status).toBe('up_to_date');
+
+    const contentAfterThirdSync = readFileSync(join(repoPath, 'tasks/sync-task.md'), 'utf-8');
+    expect(contentAfterThirdSync).toBe(contentAfterSecondSync);
   });
 });
 

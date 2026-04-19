@@ -17,7 +17,7 @@ function defaultWorkers(): number {
   return Math.min(byPool, byCpu, byMem);
 }
 
-export async function runImport(engine: BrainEngine, args: string[]) {
+export async function runImport(engine: BrainEngine, args: string[], opts?: { titleMap?: import('../core/normalize.ts').TitleMap }) {
   const noEmbed = args.includes('--no-embed');
   const fresh = args.includes('--fresh');
   const jsonOutput = args.includes('--json');
@@ -82,7 +82,7 @@ export async function runImport(engine: BrainEngine, args: string[]) {
   async function processFile(eng: BrainEngine, filePath: string) {
     const relativePath = relative(dir, filePath);
     try {
-      const result = await importFile(eng, filePath, relativePath, { noEmbed });
+      const result = await importFile(eng, filePath, relativePath, { noEmbed, titleMap: opts?.titleMap });
       if (result.status === 'imported') {
         imported++;
         chunksCreated += result.chunks;
