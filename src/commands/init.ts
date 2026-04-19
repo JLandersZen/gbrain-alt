@@ -1,17 +1,18 @@
 import { execSync } from 'child_process';
-import { readdirSync, lstatSync, existsSync, copyFileSync, mkdirSync, readFileSync } from 'fs';
+import { readdirSync, lstatSync, existsSync, copyFileSync, mkdirSync, readFileSync, appendFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-import { saveConfig, loadConfig, toEngineConfig, type GBrainConfig } from '../core/config.ts';
+import { saveConfig, loadConfig, toEngineConfig, setConfigDir, globalConfigDir, configPath, type GBrainConfig } from '../core/config.ts';
 import { createEngine } from '../core/engine-factory.ts';
 
 export async function runInit(args: string[]) {
   const isSupabase = args.includes('--supabase');
   const isPGLite = args.includes('--pglite');
+  const isGlobal = args.includes('--global');
   const isNonInteractive = args.includes('--non-interactive');
   const isMigrateOnly = args.includes('--migrate-only');
   const jsonOutput = args.includes('--json');
@@ -47,7 +48,7 @@ export async function runInit(args: string[]) {
       }
     }
 
-    return initPGLite({ jsonOutput, apiKey, customPath });
+    return initPGLite({ jsonOutput, apiKey, customPath, isGlobal });
   }
 
   // Supabase/Postgres mode
@@ -66,7 +67,7 @@ export async function runInit(args: string[]) {
     databaseUrl = await supabaseWizard();
   }
 
-  return initPostgres({ databaseUrl, jsonOutput, apiKey });
+  return initPostgres({ databaseUrl, jsonOutput, apiKey, isGlobal });
 }
 
 /**
@@ -102,8 +103,14 @@ async function initMigrateOnly(opts: { jsonOutput: boolean }) {
   }
 }
 
-async function initPGLite(opts: { jsonOutput: boolean; apiKey: string | null; customPath: string | null }) {
-  const dbPath = opts.customPath || join(homedir(), '.gbrain', 'brain.pglite');
+async function initPGLite(opts: { jsonOutput: boolean; apiKey: string | null; customPath: string | null; isGlobal: boolean }) {
+  const targetDir = opts.isGlobal
+    ? globalConfigDir()
+    : join(process.cwd(), '.gbrain');
+
+  setConfigDir(targetDir);
+
+  const dbPath = opts.customPath || join(targetDir, 'brain.pglite');
   console.log(`Setting up local brain with PGLite (no server needed)...`);
 
   const engine = await createEngine({ engine: 'pglite' });
@@ -117,6 +124,10 @@ async function initPGLite(opts: { jsonOutput: boolean; apiKey: string | null; cu
   };
   saveConfig(config);
 
+  if (!opts.isGlobal) {
+    ensureGitignore(process.cwd());
+  }
+
   const stats = await engine.getStats();
   await engine.disconnect();
 
@@ -124,6 +135,7 @@ async function initPGLite(opts: { jsonOutput: boolean; apiKey: string | null; cu
     console.log(JSON.stringify({ status: 'success', engine: 'pglite', path: dbPath, pages: stats.page_count }));
   } else {
     console.log(`\nBrain ready at ${dbPath}`);
+    console.log(`Config: ${configPath()}`);
     console.log(`${stats.page_count} pages. Engine: PGLite (local Postgres).`);
     if (stats.page_count > 0) {
       console.log('');
@@ -140,7 +152,13 @@ async function initPGLite(opts: { jsonOutput: boolean; apiKey: string | null; cu
   }
 }
 
-async function initPostgres(opts: { databaseUrl: string; jsonOutput: boolean; apiKey: string | null }) {
+async function initPostgres(opts: { databaseUrl: string; jsonOutput: boolean; apiKey: string | null; isGlobal: boolean }) {
+  const targetDir = opts.isGlobal
+    ? globalConfigDir()
+    : join(process.cwd(), '.gbrain');
+
+  setConfigDir(targetDir);
+
   const { databaseUrl } = opts;
 
   // Detect Supabase direct connection URLs and warn about IPv6
@@ -196,7 +214,12 @@ async function initPostgres(opts: { databaseUrl: string; jsonOutput: boolean; ap
     ...(opts.apiKey ? { openai_api_key: opts.apiKey } : {}),
   };
   saveConfig(config);
-  console.log('Config saved to ~/.gbrain/config.json');
+
+  if (!opts.isGlobal) {
+    ensureGitignore(process.cwd());
+  }
+
+  console.log(`Config saved to ${configPath()}`);
 
   const stats = await engine.getStats();
   await engine.disconnect();
@@ -266,6 +289,22 @@ async function supabaseWizard(): Promise<string> {
     process.exit(1);
   }
   return url;
+}
+
+function ensureGitignore(projectDir: string): void {
+  const gitignorePath = join(projectDir, '.gitignore');
+  try {
+    if (existsSync(gitignorePath)) {
+      const content = readFileSync(gitignorePath, 'utf-8');
+      if (!content.includes('.gbrain/')) {
+        appendFileSync(gitignorePath, '\n# gbrain local brain\n.gbrain/\n');
+      }
+    } else {
+      writeFileSync(gitignorePath, '# gbrain local brain\n.gbrain/\n');
+    }
+  } catch {
+    // Non-fatal: gitignore management shouldn't block init
+  }
 }
 
 function readLine(prompt: string): Promise<string> {
