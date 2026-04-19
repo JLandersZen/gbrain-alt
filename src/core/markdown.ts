@@ -98,10 +98,7 @@ export function splitBody(body: string): { compiled_truth: string; relationships
 
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].trim() === '---') {
-      const beforeContent = lines.slice(0, i).join('\n').trim();
-      if (beforeContent.length > 0 || separators.length > 0) {
-        separators.push(i);
-      }
+      separators.push(i);
     }
   }
 
@@ -146,12 +143,12 @@ export function serializeMarkdown(
 
   const yamlContent = matter.stringify('', fullFrontmatter).trim();
 
-  let body = compiled_truth;
   const relationships = meta.relationships || '';
+
+  let body = compiled_truth;
   if (relationships) {
-    body += '\n\n---\n\n' + relationships;
-  }
-  if (timeline) {
+    body += '\n\n---\n\n' + relationships + '\n\n---\n\n' + timeline;
+  } else if (timeline) {
     body += '\n\n---\n\n' + timeline;
   }
 

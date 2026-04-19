@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { buildSyncManifest, isSyncable, pathToSlug } from '../src/core/sync.ts';
+import { buildSyncManifest, isSyncable, pathToSlug, scopeToSubdir } from '../src/core/sync.ts';
 
 describe('buildSyncManifest', () => {
   test('parses A/M/D entries from single commit', () => {
@@ -188,5 +188,89 @@ describe('buildSyncManifest edge cases', () => {
     expect(manifest.modified).toEqual([]);
     expect(manifest.deleted).toEqual([]);
     expect(manifest.renamed).toEqual([]);
+  });
+});
+
+describe('scopeToSubdir', () => {
+  test('filters to only files under the subdir and strips prefix', () => {
+    const manifest = buildSyncManifest(
+      'A\tbrain/people/joe.md\nA\texports/dump.md\nM\tbrain/tasks/fix-bug.md'
+    );
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.added).toEqual(['people/joe.md']);
+    expect(scoped.modified).toEqual(['tasks/fix-bug.md']);
+  });
+
+  test('handles subdir with trailing slash', () => {
+    const manifest = buildSyncManifest('A\tbrain/people/joe.md\nA\tREADME.md');
+    const scoped = scopeToSubdir(manifest, 'brain/');
+    expect(scoped.added).toEqual(['people/joe.md']);
+  });
+
+  test('filters deleted files', () => {
+    const manifest = buildSyncManifest(
+      'D\tbrain/people/old.md\nD\texports/old.md'
+    );
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.deleted).toEqual(['people/old.md']);
+  });
+
+  test('filters and strips renamed files', () => {
+    const manifest = buildSyncManifest(
+      'R100\tbrain/people/old-name.md\tbrain/people/new-name.md\n' +
+      'R100\texports/a.md\texports/b.md'
+    );
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.renamed).toEqual([{ from: 'people/old-name.md', to: 'people/new-name.md' }]);
+  });
+
+  test('returns empty manifest when no files match', () => {
+    const manifest = buildSyncManifest('A\texports/dump.md\nM\tREADME.md');
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.added).toEqual([]);
+    expect(scoped.modified).toEqual([]);
+    expect(scoped.deleted).toEqual([]);
+    expect(scoped.renamed).toEqual([]);
+  });
+
+  test('does not match partial directory names', () => {
+    const manifest = buildSyncManifest('A\tbrainstorm/idea.md\nA\tbrain/people/joe.md');
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.added).toEqual(['people/joe.md']);
+  });
+
+  test('handles nested subdir', () => {
+    const manifest = buildSyncManifest('A\tdata/brain/people/joe.md\nA\tdata/other/file.md');
+    const scoped = scopeToSubdir(manifest, 'data/brain');
+    expect(scoped.added).toEqual(['people/joe.md']);
+  });
+});
+
+describe('brain/ as standalone repo (no subdir needed)', () => {
+  test('when brain/ is its own git repo, no subdir stripping is needed', () => {
+    // brain/ is a standalone git repo, so git diff paths are relative to brain/
+    // e.g. "people/joe.md" not "brain/people/joe.md"
+    const manifest = buildSyncManifest(
+      'A\tpeople/joe.md\nA\ttasks/fix.md\nM\tresources/doc.md'
+    );
+    // No scopeToSubdir call — all paths are already relative
+    expect(manifest.added).toEqual(['people/joe.md', 'tasks/fix.md']);
+    expect(manifest.modified).toEqual(['resources/doc.md']);
+  });
+
+  test('scopeToSubdir is only needed for monorepo layouts', () => {
+    // Monorepo: brain data is in a subdir of a larger repo
+    const manifest = buildSyncManifest(
+      'A\tbrain/people/joe.md\nA\tREADME.md\nA\tsrc/cli.ts'
+    );
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.added).toEqual(['people/joe.md']);
+  });
+
+  test('standalone brain/ repo does not need prefix stripping', () => {
+    // pathToSlug works directly on repo-relative paths
+    expect(pathToSlug('people/joe.md')).toBe('people/joe');
+    expect(pathToSlug('tasks/fix-bug.md')).toBe('tasks/fix-bug');
+    expect(pathToSlug('resources/architecture-rfc.md')).toBe('resources/architecture-rfc');
   });
 });

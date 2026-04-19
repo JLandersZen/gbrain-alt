@@ -402,8 +402,8 @@ SEARCH
 
 IMPORT/EXPORT
   import <dir> [--no-embed]          Import markdown directory
-  sync [--repo <path>] [flags]       Git-to-brain incremental sync
-  export [--dir ./out/]              Export to markdown
+  sync [--repo <path>] [flags]         Git-to-brain sync (defaults to brain/)
+  export [--dir ./brain]              Export to markdown (defaults to brain/)
 
 FILES
   files list [slug]                  List stored files

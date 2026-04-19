@@ -177,12 +177,23 @@ describe('splitBody', () => {
     expect(timeline).toContain('Timeline part 2');
   });
 
-  test('ignores leading --- when no content before it', () => {
+  test('leading --- with no content before it is a real separator', () => {
     const body = '\n---\n\nActual compiled truth\n\n---\n\nTimeline';
     const { compiled_truth, relationships, timeline } = splitBody(body);
-    expect(compiled_truth).toContain('Actual compiled truth');
-    expect(relationships).toBe('');
+    // Leading --- counts as a separator: empty compiled_truth, middle zone, timeline
+    expect(compiled_truth.trim()).toBe('');
+    expect(relationships).toContain('Actual compiled truth');
     expect(timeline).toContain('Timeline');
+  });
+
+  test('does not recognize *** as zone separator (only --- is a zone delimiter)', () => {
+    const body = 'Compiled truth\n\n***\n\nMore content\n\n***\n\nEven more';
+    const { compiled_truth, relationships, timeline } = splitBody(body);
+    expect(compiled_truth).toContain('Compiled truth');
+    expect(compiled_truth).toContain('***');
+    expect(compiled_truth).toContain('More content');
+    expect(relationships).toBe('');
+    expect(timeline).toBe('');
   });
 });
 

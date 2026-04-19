@@ -929,6 +929,42 @@ section is the relationships zone.
 horizontal rules to `***` during import to prevent collision with zone separators.
 Both are valid markdown HRs. Verified: 0 body `---` in 368 imported Notion pages.
 
+### 5.7 brain/ as Standalone Git Repo
+
+`brain/` is a separate git repository, gitignored by the parent workspace (e.g.
+ralph-pva). This separates shared code/skills from per-user brain data. Each user
+has their own brain repo; the workspace repo is shared.
+
+**Repo layout (invariant):**
+
+```
+project-root/          ← workspace git repo (shared code, skills, docs)
+  brain/               ← brain data git repo (gitignored, per-user)
+    .git/              ← brain's own git history
+    people/            ← markdown pages
+    tasks/
+    ...
+  .gbrain/             ← PGLite database + config (gitignored)
+  exports/             ← optional: Notion/other exports (input)
+```
+
+**Why not a submodule:** Submodules couple the two histories — every `git clone`
+of the workspace would need access to the brain remote, and shared commits would
+pin to one person's brain state.
+
+**Entry point defaults:**
+
+| Command | Default behavior |
+|---------|-----------------|
+| `gbrain init` | Creates `brain/`, `git init`s it, stores `sync.repo_path` in DB config |
+| `gbrain import` | User provides dir (typically `brain/`). Import auto-discovers git root, stores `sync.repo_path` in config. |
+| `gbrain sync` | Reads `sync.repo_path` from config. Falls back to `brain/` in cwd if it's a git repo. No `--subdir` needed — brain/ IS the git root. |
+| `gbrain export` | Defaults to `brain/` (not `./export/`). |
+
+**`--subdir` escape hatch:** For monorepo layouts where brain data is a
+subdirectory of a larger repo, `--subdir` scopes git diff and strips the prefix.
+This is NOT the default path — it exists only for non-standard layouts.
+
 ## 6. What Does Not Change
 
 - Database schema (SQL tables, indexes, constraints)

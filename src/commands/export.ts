@@ -5,7 +5,7 @@ import { serializeMarkdown } from '../core/markdown.ts';
 
 export async function runExport(engine: BrainEngine, args: string[]) {
   const dirIdx = args.indexOf('--dir');
-  const outDir = dirIdx !== -1 ? args[dirIdx + 1] : './export';
+  const outDir = dirIdx !== -1 ? args[dirIdx + 1] : './brain';
 
   const pages = await engine.listPages({ limit: 100000 });
   console.log(`Exporting ${pages.length} pages to ${outDir}/`);

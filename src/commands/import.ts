@@ -1,6 +1,6 @@
 import { readdirSync, lstatSync, existsSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
 import { execFileSync } from 'child_process';
-import { join, relative } from 'path';
+import { join, relative, resolve } from 'path';
 import { cpus, totalmem } from 'os';
 import matter from 'gray-matter';
 import type { BrainEngine } from '../core/engine.ts';
@@ -284,16 +284,23 @@ export async function runImport(engine: BrainEngine, args: string[]) {
     summary: `Imported ${imported} pages, ${skipped} skipped, ${chunksCreated} chunks`,
   });
 
-  // Import → sync continuity: write sync checkpoint if this is a git repo
+  // Import → sync continuity: write sync checkpoint if dir is inside a git repo.
+  // Walk up from the import dir to find the git root. If the import dir is a
+  // subdirectory (e.g. brain/ inside a larger repo), store the subdir so that
+  // `gbrain sync` automatically scopes to it.
   try {
-    if (existsSync(join(dir, '.git'))) {
-      const head = execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf-8' }).trim();
-      await engine.setConfig('sync.last_commit', head);
-      await engine.setConfig('sync.last_run', new Date().toISOString());
-      await engine.setConfig('sync.repo_path', dir);
+    const absDir = resolve(dir);
+    const gitRoot = execFileSync('git', ['-C', absDir, 'rev-parse', '--show-toplevel'], { encoding: 'utf-8' }).trim();
+    const head = execFileSync('git', ['-C', gitRoot, 'rev-parse', 'HEAD'], { encoding: 'utf-8' }).trim();
+    await engine.setConfig('sync.last_commit', head);
+    await engine.setConfig('sync.last_run', new Date().toISOString());
+    await engine.setConfig('sync.repo_path', gitRoot);
+    const subdir = relative(gitRoot, absDir);
+    if (subdir && subdir !== '.') {
+      await engine.setConfig('sync.subdir', subdir);
     }
   } catch {
-    // Not a git repo or git not available, skip checkpoint
+    // Not inside a git repo or git not available, skip checkpoint
   }
 }
 

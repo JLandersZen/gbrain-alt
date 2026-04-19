@@ -478,7 +478,11 @@ Slice 3c      ─── Relationships zone generation ─────── ✅
   │
 Slice 3d      ─── Reverse-link reconstruction ───────── ✅
   │
-Slice 3e      ─── Documentation + E2E validation ───── ⬅ NEXT
+Slice 3d-post ─── Sync --subdir + import git discovery ── ✅ (gbrain-alt-ej2)
+  │
+Slice 3d-post2 ── brain/ as standalone git repo ─────── ✅ (gbrain-alt-jmf)
+  │
+Slice 3e      ─── Documentation + E2E validation ───── NEXT
 ```
 
 Each step leaves the codebase green. Each commit is independently useful.
@@ -511,8 +515,10 @@ Phase 2 validated Phase 1. Phase 3 fixes gaps discovered during Phase 2.
 | Existing pages with multiple `---` reinterpreted | **Active** | Three-zone parser treats middle section as relationships. Pages with extra `---` in their timeline will have that content moved to relationships zone. Mitigation: only pages explicitly given a relationships zone via sync will have two separators. Existing two-zone pages are backwards compatible. |
 | Embed silently skips without OPENAI_API_KEY | **Active** | `gbrain embed` produces no error when key is missing. Beads: `gbrain-alt-qbv`. Fix: upfront key check in embed codepath. |
 | No .env auto-loading in CLI | ✅ Resolved | `.env` auto-loading with walk-up discovery implemented in `src/core/env.ts`. Beads: `gbrain-alt-qbv` closed. |
-| Notion export nests relations under `links:` key | **Active (3b)** | 332/368 pages have relations under `links:` parent key, not top-level. Slice 3b must flatten before extracting. |
-| 19 files with unresolved Notion UUID paths | **Active (3b)** | URL-encoded Notion paths with 32-char UUIDs survived as relation values. Need cleanup pass or skip during relation extraction. Files listed in `gbrain-alt-pbt` close reason. |
+| Notion export nests relations under `links:` key | ✅ Resolved (3b) | `flattenLinksNesting()` lifts children to top-level before extraction. |
+| 19 files with unresolved Notion UUID paths | ✅ Resolved (3b) | `isNotionUuidPath()` skips values matching 32-char hex UUID pattern. |
+| `gbrain sync` can't scope to subdirectory | ✅ Resolved (3d-post) | `--subdir` flag + `scopeToSubdir()`. Import auto-discovers git root and stores `sync.subdir` in config. |
+| `brain/` not default across entry points | **Active (3d-post2)** | `gbrain-alt-jmf` — init, sync, export all need brain/ as hardcoded default. Convention over configuration (user-approved). |
 
 ---
 

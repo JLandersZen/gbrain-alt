@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
-import { readdirSync, lstatSync, existsSync, readFileSync, appendFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { readdirSync, lstatSync, existsSync, readFileSync, appendFileSync, writeFileSync, mkdirSync } from 'fs';
+import { join, resolve } from 'path';
 import { homedir } from 'os';
 import { saveConfig, setConfigDir, globalConfigDir, configPath, type GBrainConfig } from '../core/config.ts';
 import { createEngine } from '../core/engine-factory.ts';
@@ -81,16 +81,35 @@ async function initPGLite(opts: { jsonOutput: boolean; apiKey: string | null; cu
     ensureGitignore(process.cwd());
   }
 
+  // Create brain/ as its own git repo (unless global init)
+  if (!opts.isGlobal) {
+    const brainDir = resolve('brain');
+    mkdirSync(brainDir, { recursive: true });
+    if (!existsSync(join(brainDir, '.git'))) {
+      try {
+        execSync('git init', { cwd: brainDir, stdio: 'pipe' });
+      } catch {
+        // git not available — brain/ still usable without version control
+      }
+    }
+    await engine.setConfig('sync.repo_path', brainDir);
+  }
+
   const stats = await engine.getStats();
   await engine.disconnect();
 
   if (opts.jsonOutput) {
-    console.log(JSON.stringify({ status: 'success', engine: 'pglite', path: dbPath, pages: stats.page_count }));
+    console.log(JSON.stringify({ status: 'success', engine: 'pglite', path: dbPath, pages: stats.page_count, brain_dir: opts.isGlobal ? undefined : 'brain/' }));
   } else {
     console.log(`\nBrain ready at ${dbPath}`);
     console.log(`Config: ${configPath()}`);
     console.log(`${stats.page_count} pages. Engine: PGLite (local Postgres).`);
-    console.log('Next: gbrain import <dir>');
+    if (!opts.isGlobal) {
+      console.log(`Data directory: brain/ (git repo)`);
+      console.log('Next: add markdown to brain/, then gbrain import brain/');
+    } else {
+      console.log('Next: gbrain import <dir>');
+    }
     console.log('');
     console.log('When you outgrow local: gbrain migrate --to supabase');
   }
@@ -163,16 +182,35 @@ async function initPostgres(opts: { databaseUrl: string; jsonOutput: boolean; ap
     ensureGitignore(process.cwd());
   }
 
+  // Create brain/ as its own git repo (unless global init)
+  if (!opts.isGlobal) {
+    const brainDir = resolve('brain');
+    mkdirSync(brainDir, { recursive: true });
+    if (!existsSync(join(brainDir, '.git'))) {
+      try {
+        execSync('git init', { cwd: brainDir, stdio: 'pipe' });
+      } catch {
+        // git not available — brain/ still usable without version control
+      }
+    }
+    await engine.setConfig('sync.repo_path', brainDir);
+  }
+
   console.log(`Config saved to ${configPath()}`);
 
   const stats = await engine.getStats();
   await engine.disconnect();
 
   if (opts.jsonOutput) {
-    console.log(JSON.stringify({ status: 'success', engine: 'postgres', pages: stats.page_count }));
+    console.log(JSON.stringify({ status: 'success', engine: 'postgres', pages: stats.page_count, brain_dir: opts.isGlobal ? undefined : 'brain/' }));
   } else {
     console.log(`\nBrain ready. ${stats.page_count} pages. Engine: Postgres (Supabase).`);
-    console.log('Next: gbrain import <dir>');
+    if (!opts.isGlobal) {
+      console.log(`Data directory: brain/ (git repo)`);
+      console.log('Next: add markdown to brain/, then gbrain import brain/');
+    } else {
+      console.log('Next: gbrain import <dir>');
+    }
   }
 }
 

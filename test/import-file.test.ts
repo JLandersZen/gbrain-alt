@@ -826,4 +826,200 @@ Notes about Alice.
     expect(putCall.args[1].frontmatter).not.toHaveProperty('_events');
     expect(putCall.args[1].frontmatter.related_events).toEqual(['events/weekly-sync']);
   });
+
+  test('re-import does not duplicate relationships zone (idempotent)', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Engineering Leadership', slug: 'aors/engineering-leadership' },
+      { title: 'Joe Landers', slug: 'people/joe-landers' },
+    ]);
+
+    const filePath = join(TMP, 'idem-zone.md');
+    const original = `---
+type: task
+title: Idempotent Zone
+assigned_aors:
+  - aors/engineering-leadership
+related_people:
+  - people/joe-landers
+---
+
+Build the widget.
+
+---
+
+- 2026-04-18: Created
+`;
+    writeFileSync(filePath, original);
+
+    const engine = mockEngine();
+
+    // First import — adds the relationships zone
+    await importFile(engine, filePath, 'tasks/idem-zone.md', { noEmbed: true, titleMap });
+    const afterFirst = readFileSync(filePath, 'utf-8');
+    const firstCount = (afterFirst.match(/## Relationships/g) || []).length;
+    expect(firstCount).toBe(1);
+
+    // Second import — must NOT duplicate the zone
+    await importFile(engine, filePath, 'tasks/idem-zone.md', { noEmbed: true, titleMap });
+    const afterSecond = readFileSync(filePath, 'utf-8');
+    const secondCount = (afterSecond.match(/## Relationships/g) || []).length;
+    expect(secondCount).toBe(1);
+
+    // Third import — still exactly one
+    await importFile(engine, filePath, 'tasks/idem-zone.md', { noEmbed: true, titleMap });
+    const afterThird = readFileSync(filePath, 'utf-8');
+    const thirdCount = (afterThird.match(/## Relationships/g) || []).length;
+    expect(thirdCount).toBe(1);
+  });
+
+  test('empty compiled_truth: zone does not duplicate on re-import', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'At Work', slug: 'contexts/at-work' },
+      { title: 'Karpenter Rollout', slug: 'projects/karpenter-rollout' },
+    ]);
+
+    const filePath = join(TMP, 'empty-ct.md');
+    const original = `---
+type: aor
+title: Cloud Cost Optimization
+projects:
+  - projects/karpenter-rollout
+assigned_contexts:
+  - contexts/at-work
+---
+`;
+    writeFileSync(filePath, original);
+
+    const engine = mockEngine();
+
+    // First import — adds zone
+    await importFile(engine, filePath, 'aors/empty-ct.md', { noEmbed: true, titleMap });
+    const afterFirst = readFileSync(filePath, 'utf-8');
+    expect((afterFirst.match(/## Relationships/g) || []).length).toBe(1);
+
+    // Second import — zone must NOT duplicate
+    await importFile(engine, filePath, 'aors/empty-ct.md', { noEmbed: true, titleMap });
+    const afterSecond = readFileSync(filePath, 'utf-8');
+    expect((afterSecond.match(/## Relationships/g) || []).length).toBe(1);
+
+    // Third import — still exactly one
+    await importFile(engine, filePath, 'aors/empty-ct.md', { noEmbed: true, titleMap });
+    const afterThird = readFileSync(filePath, 'utf-8');
+    expect((afterThird.match(/## Relationships/g) || []).length).toBe(1);
+  });
+
+  test('zone content is updated in-place, not duplicated', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Alice', slug: 'people/alice' },
+      { title: 'Bob', slug: 'people/bob' },
+    ]);
+
+    const filePath = join(TMP, 'zone-update.md');
+    const original = `---
+type: task
+title: Zone Update
+related_people:
+  - people/alice
+---
+
+Do the thing.
+
+---
+
+- 2026-04-18: Started
+`;
+    writeFileSync(filePath, original);
+
+    const engine = mockEngine();
+
+    // First import — zone with just Alice
+    await importFile(engine, filePath, 'tasks/zone-update.md', { noEmbed: true, titleMap });
+    const afterFirst = readFileSync(filePath, 'utf-8');
+    expect(afterFirst).toContain('[Alice](people/alice.md)');
+    expect((afterFirst.match(/## Relationships/g) || []).length).toBe(1);
+
+    // Edit frontmatter to add Bob
+    const edited = afterFirst.replace(
+      'related_people:\n  - people/alice',
+      'related_people:\n  - people/alice\n  - people/bob',
+    );
+    writeFileSync(filePath, edited);
+
+    // Second import — zone should have both, but only ONE heading
+    await importFile(engine, filePath, 'tasks/zone-update.md', { noEmbed: true, titleMap });
+    const afterSecond = readFileSync(filePath, 'utf-8');
+    expect(afterSecond).toContain('[Alice](people/alice.md)');
+    expect(afterSecond).toContain('[Bob](people/bob.md)');
+    expect((afterSecond.match(/## Relationships/g) || []).length).toBe(1);
+  });
+
+  test('file with *** HRs in compiled truth survives zone generation', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Alice', slug: 'people/alice' },
+    ]);
+
+    const filePath = join(TMP, 'star-hr.md');
+    const original = `---
+type: resource
+title: Star HR Test
+related_people:
+  - people/alice
+---
+
+First section.
+
+***
+
+Second section with a star HR.
+
+---
+
+- 2026-04-18: Created
+`;
+    writeFileSync(filePath, original);
+
+    const engine = mockEngine();
+    await importFile(engine, filePath, 'resources/star-hr.md', { noEmbed: true, titleMap });
+
+    const ondisk = readFileSync(filePath, 'utf-8');
+    expect(ondisk).toContain('***');
+    expect(ondisk).toContain('First section.');
+    expect(ondisk).toContain('Second section with a star HR.');
+    expect(ondisk).toContain('## Relationships');
+    expect((ondisk.match(/## Relationships/g) || []).length).toBe(1);
+  });
+
+  test('round-trip stability: no-change re-import produces identical file', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Engineering Leadership', slug: 'aors/engineering-leadership' },
+    ]);
+
+    const filePath = join(TMP, 'roundtrip.md');
+    const original = `---
+type: task
+title: Roundtrip
+assigned_aors:
+  - aors/engineering-leadership
+---
+
+Content here.
+
+---
+
+- 2026-04-18: Created
+`;
+    writeFileSync(filePath, original);
+
+    const engine = mockEngine();
+
+    // First import — writes the zone
+    await importFile(engine, filePath, 'tasks/roundtrip.md', { noEmbed: true, titleMap });
+    const afterFirst = readFileSync(filePath, 'utf-8');
+
+    // Second import — file should be byte-identical (no unnecessary rewrite)
+    await importFile(engine, filePath, 'tasks/roundtrip.md', { noEmbed: true, titleMap });
+    const afterSecond = readFileSync(filePath, 'utf-8');
+
+    expect(afterSecond).toBe(afterFirst);
+  });
 });

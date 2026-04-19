@@ -161,6 +161,10 @@ Do not leave containers running after tests. Do not skip E2E tests.
 Never leave `gbrain-test-pg` running. If you find a stale one from a previous run,
 stop and remove it before starting a new one.
 
+### Feature test EVERYTHING
+Every feature this system is supposed to have, every feature that is already documented and every feature the user tells you to implement.  
+Every feature MUST have a feature test to ward off regressions.  
+
 ## Skills
 
 Read the skill files in `skills/` before doing brain operations. They contain the

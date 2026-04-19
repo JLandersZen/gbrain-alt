@@ -1,9 +1,9 @@
 import { existsSync } from 'fs';
 import { execFileSync } from 'child_process';
-import { join, relative } from 'path';
+import { join, relative, resolve } from 'path';
 import type { BrainEngine } from '../core/engine.ts';
 import { importFile } from '../core/import-file.ts';
-import { buildSyncManifest, isSyncable, pathToSlug } from '../core/sync.ts';
+import { buildSyncManifest, isSyncable, pathToSlug, scopeToSubdir } from '../core/sync.ts';
 import type { SyncManifest } from '../core/sync.ts';
 
 export interface SyncResult {
@@ -20,6 +20,7 @@ export interface SyncResult {
 
 export interface SyncOpts {
   repoPath?: string;
+  subdir?: string;
   dryRun?: boolean;
   full?: boolean;
   noPull?: boolean;
@@ -34,10 +35,19 @@ function git(repoPath: string, ...args: string[]): string {
 }
 
 export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<SyncResult> {
-  // Resolve repo path
-  const repoPath = opts.repoPath || await engine.getConfig('sync.repo_path');
+  // Resolve repo path: CLI flag > config > brain/ in cwd
+  let repoPath = opts.repoPath || await engine.getConfig('sync.repo_path');
   if (!repoPath) {
-    throw new Error('No repo path specified. Use --repo or run gbrain init with --repo first.');
+    const brainDir = resolve('brain');
+    if (existsSync(join(brainDir, '.git'))) {
+      repoPath = brainDir;
+    } else {
+      throw new Error('No repo path specified. Use --repo or run gbrain init first.');
+    }
+  }
+  if (!opts.subdir) {
+    const configSubdir = await engine.getConfig('sync.subdir');
+    if (configSubdir) opts = { ...opts, subdir: configSubdir };
   }
 
   // Validate git repo
@@ -107,7 +117,12 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
 
   // Diff using git diff (net result, not per-commit)
   const diffOutput = git(repoPath, 'diff', '--name-status', '-M', `${lastCommit}..${headCommit}`);
-  const manifest = buildSyncManifest(diffOutput);
+  let manifest = buildSyncManifest(diffOutput);
+
+  // Scope to subdirectory (strips prefix so paths/slugs are relative to subdir)
+  if (opts.subdir) {
+    manifest = scopeToSubdir(manifest, opts.subdir);
+  }
 
   // Filter to syncable files
   const filtered: SyncManifest = {
@@ -116,6 +131,10 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
     deleted: manifest.deleted.filter(p => isSyncable(p)),
     renamed: manifest.renamed.filter(r => isSyncable(r.to)),
   };
+
+  // File paths are relative to manifest (subdir-stripped), but files live on disk
+  // at repoPath/subdir/path. fileBase resolves this.
+  const fileBase = opts.subdir ? join(repoPath, opts.subdir) : repoPath;
 
   // Delete pages that became un-syncable (modified but filtered out)
   const unsyncableModified = manifest.modified.filter(p => !isSyncable(p));
@@ -194,7 +213,7 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
       // Slug doesn't exist or collision, treat as add
     }
     // Reimport at new path (picks up content changes)
-    const filePath = join(repoPath, to);
+    const filePath = join(fileBase, to);
     if (existsSync(filePath)) {
       const result = await importFile(engine, filePath, to, { noEmbed });
       if (result.status === 'imported') chunksCreated += result.chunks;
@@ -206,7 +225,7 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
   const useTransaction = (filtered.added.length + filtered.modified.length) > 10;
   const processAddsModifies = async () => {
     for (const path of [...filtered.added, ...filtered.modified]) {
-      const filePath = join(repoPath, path);
+      const filePath = join(fileBase, path);
       if (!existsSync(filePath)) continue;
       try {
         const result = await importFile(engine, filePath, path, { noEmbed });
@@ -265,9 +284,10 @@ async function performFullSync(
   headCommit: string,
   opts: SyncOpts,
 ): Promise<SyncResult> {
-  console.log(`Running full import of ${repoPath}...`);
+  const importDir = opts.subdir ? join(repoPath, opts.subdir) : repoPath;
+  console.log(`Running full import of ${importDir}...`);
   const { runImport } = await import('./import.ts');
-  const importArgs = [repoPath];
+  const importArgs = [importDir];
   if (opts.noEmbed) importArgs.push('--no-embed');
   await runImport(engine, importArgs);
 
@@ -283,6 +303,7 @@ async function performFullSync(
 
 export async function runSync(engine: BrainEngine, args: string[]) {
   const repoPath = args.find((a, i) => args[i - 1] === '--repo') || undefined;
+  const subdir = args.find((a, i) => args[i - 1] === '--subdir') || undefined;
   const watch = args.includes('--watch');
   const intervalStr = args.find((a, i) => args[i - 1] === '--interval');
   const interval = intervalStr ? parseInt(intervalStr, 10) : 60;
@@ -291,7 +312,7 @@ export async function runSync(engine: BrainEngine, args: string[]) {
   const noPull = args.includes('--no-pull');
   const noEmbed = args.includes('--no-embed');
 
-  const opts: SyncOpts = { repoPath, dryRun, full, noPull, noEmbed };
+  const opts: SyncOpts = { repoPath, subdir, dryRun, full, noPull, noEmbed };
 
   if (!watch) {
     const result = await performSync(engine, opts);

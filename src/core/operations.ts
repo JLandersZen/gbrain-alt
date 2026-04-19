@@ -430,6 +430,7 @@ const sync_brain: Operation = {
   description: 'Sync git repo to brain (incremental)',
   params: {
     repo: { type: 'string', description: 'Path to git repo (optional if configured)' },
+    subdir: { type: 'string', description: 'Subdirectory within the repo to sync (only needed for monorepo layouts)' },
     dry_run: { type: 'boolean', description: 'Preview changes without applying' },
     full: { type: 'boolean', description: 'Full re-sync (ignore checkpoint)' },
     no_pull: { type: 'boolean', description: 'Skip git pull' },
@@ -440,6 +441,7 @@ const sync_brain: Operation = {
     const { performSync } = await import('../commands/sync.ts');
     return performSync(ctx.engine, {
       repoPath: p.repo as string | undefined,
+      subdir: p.subdir as string | undefined,
       dryRun: ctx.dryRun || (p.dry_run as boolean) || false,
       noEmbed: (p.no_embed as boolean) || false,
       noPull: (p.no_pull as boolean) || false,
