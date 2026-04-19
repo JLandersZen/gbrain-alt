@@ -491,7 +491,7 @@ SEARCH
 
 IMPORT/EXPORT
   import <dir> [--no-embed]          Import markdown directory
-  sync [--repo <path>] [flags]       Git-to-brain incremental sync
+  sync [--repo <path>] [--subdir D]  Git-to-brain incremental sync
   sync --watch [--interval N]        Continuous sync (loops until stopped)
   sync --install-cron                Install persistent sync daemon
   export [--dir ./out/]              Export to markdown

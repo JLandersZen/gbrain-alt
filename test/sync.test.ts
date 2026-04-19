@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { buildSyncManifest, isSyncable, pathToSlug } from '../src/core/sync.ts';
+import { buildSyncManifest, isSyncable, pathToSlug, scopeToSubdir } from '../src/core/sync.ts';
 
 describe('buildSyncManifest', () => {
   test('parses A/M/D entries from single commit', () => {
@@ -191,6 +191,63 @@ describe('buildSyncManifest edge cases', () => {
   });
 });
 
+describe('scopeToSubdir', () => {
+  test('filters and strips prefix from all manifest arrays', () => {
+    const manifest = buildSyncManifest([
+      'A\tbrain/people/alice.md',
+      'A\tconfig.json',
+      'M\tbrain/projects/alpha.md',
+      'M\tREADME.md',
+      'D\tbrain/tasks/old.md',
+      'D\tscripts/deploy.sh',
+    ].join('\n'));
+
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.added).toEqual(['people/alice.md']);
+    expect(scoped.modified).toEqual(['projects/alpha.md']);
+    expect(scoped.deleted).toEqual(['tasks/old.md']);
+  });
+
+  test('handles renames where target is in subdir', () => {
+    const manifest = buildSyncManifest('R100\tbrain/people/old-name.md\tbrain/people/new-name.md');
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.renamed).toEqual([{ from: 'people/old-name.md', to: 'people/new-name.md' }]);
+  });
+
+  test('filters out renames whose target is outside subdir', () => {
+    const manifest = buildSyncManifest('R100\tbrain/people/alice.md\tarchive/alice.md');
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.renamed).toEqual([]);
+  });
+
+  test('handles trailing slash in subdir', () => {
+    const manifest = buildSyncManifest('A\tbrain/people/alice.md');
+    const scoped = scopeToSubdir(manifest, 'brain/');
+    expect(scoped.added).toEqual(['people/alice.md']);
+  });
+
+  test('returns empty manifest when no files match', () => {
+    const manifest = buildSyncManifest('A\tsrc/index.ts\nM\tREADME.md');
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.added).toEqual([]);
+    expect(scoped.modified).toEqual([]);
+    expect(scoped.deleted).toEqual([]);
+    expect(scoped.renamed).toEqual([]);
+  });
+
+  test('handles nested subdirectories', () => {
+    const manifest = buildSyncManifest('A\tdata/brain/wiki/page.md\nA\tdata/brain/people/bob.md\nA\tdata/other/file.md');
+    const scoped = scopeToSubdir(manifest, 'data/brain');
+    expect(scoped.added).toEqual(['wiki/page.md', 'people/bob.md']);
+  });
+
+  test('does not match partial directory names', () => {
+    const manifest = buildSyncManifest('A\tbrainstorm/ideas.md\nA\tbrain/people/alice.md');
+    const scoped = scopeToSubdir(manifest, 'brain');
+    expect(scoped.added).toEqual(['people/alice.md']);
+  });
+});
+
 describe('sync regression — #132 nested transaction deadlock', () => {
   test('src/commands/sync.ts does not wrap the add/modify loop in engine.transaction()', async () => {
     const source = await Bun.file(new URL('../src/commands/sync.ts', import.meta.url)).text();
@@ -203,5 +260,42 @@ describe('sync regression — #132 nested transaction deadlock', () => {
       const line = prelude.slice(lineStart, prelude.indexOf('\n', lastTxIdx));
       expect(line.trim().startsWith('//')).toBe(true);
     }
+  });
+});
+
+describe('sync --subdir source-level checks', () => {
+  test('SyncOpts includes subdir field', async () => {
+    const source = await Bun.file(new URL('../src/commands/sync.ts', import.meta.url)).text();
+    expect(source).toContain('subdir?: string');
+  });
+
+  test('runSync parses --subdir from args', async () => {
+    const source = await Bun.file(new URL('../src/commands/sync.ts', import.meta.url)).text();
+    expect(source).toContain("args[i - 1] === '--subdir'");
+  });
+
+  test('performSync calls scopeToSubdir when subdir is set', async () => {
+    const source = await Bun.file(new URL('../src/commands/sync.ts', import.meta.url)).text();
+    expect(source).toContain('scopeToSubdir(manifest, opts.subdir)');
+  });
+
+  test('performSync uses fileBase for file reads, not repoPath', async () => {
+    const source = await Bun.file(new URL('../src/commands/sync.ts', import.meta.url)).text();
+    const fileBaseDecl = source.indexOf('const fileBase =');
+    expect(fileBaseDecl).toBeGreaterThan(-1);
+    const afterFileBase = source.slice(fileBaseDecl);
+    expect(afterFileBase).toContain('join(fileBase, to)');
+    expect(afterFileBase).toContain('join(fileBase, path)');
+  });
+
+  test('performFullSync uses importDir computed from subdir', async () => {
+    const source = await Bun.file(new URL('../src/commands/sync.ts', import.meta.url)).text();
+    expect(source).toContain("opts.subdir ? join(repoPath, opts.subdir) : repoPath");
+  });
+
+  test('auto-extract uses fileBase not repoPath', async () => {
+    const source = await Bun.file(new URL('../src/commands/sync.ts', import.meta.url)).text();
+    expect(source).toContain('extractLinksForSlugs(engine, fileBase');
+    expect(source).toContain('extractTimelineForSlugs(engine, fileBase');
   });
 });

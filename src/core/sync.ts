@@ -133,3 +133,22 @@ export function pathToSlug(filePath: string, repoPrefix?: string): string {
   if (repoPrefix) slug = `${repoPrefix}/${slug}`;
   return slug.toLowerCase();
 }
+
+/**
+ * Filter a sync manifest to only include files under a subdirectory,
+ * and strip the subdirectory prefix from all paths so slugs are relative
+ * to the subdir (e.g. "brain/people/joe.md" → "people/joe.md").
+ */
+export function scopeToSubdir(manifest: SyncManifest, subdir: string): SyncManifest {
+  const prefix = subdir.endsWith('/') ? subdir : `${subdir}/`;
+  const strip = (p: string) => p.startsWith(prefix) ? p.slice(prefix.length) : p;
+
+  return {
+    added: manifest.added.filter(p => p.startsWith(prefix)).map(strip),
+    modified: manifest.modified.filter(p => p.startsWith(prefix)).map(strip),
+    deleted: manifest.deleted.filter(p => p.startsWith(prefix)).map(strip),
+    renamed: manifest.renamed
+      .filter(r => r.to.startsWith(prefix))
+      .map(r => ({ from: strip(r.from), to: strip(r.to) })),
+  };
+}
