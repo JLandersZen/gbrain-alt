@@ -322,7 +322,9 @@ Backwards compatible — pages with one `---` still parse as compiled_truth + ti
 
 ---
 
-### Slice 3b — Frontmatter → Links Table ⬅ NEXT
+### Slice 3b — Frontmatter → Links Table ✅ DONE
+
+**Completed:** 2026-04-18. All 700 tests pass (26 new relations tests + 7 new import-file tests). Beads: `gbrain-alt-ae6`.
 
 **Depends on:** Slice 3b-pre ✅ (import pipeline now produces slug paths in relations)
 
@@ -331,52 +333,37 @@ frontmatter relation arrays. Known relation keys (`assigned_*`, `related_*`,
 `parent`, `organizations`, `people`, `delegate`, `manager`, `supers`, `subs`)
 are parsed into typed links.
 
-**Critical finding from Notion import (2026-04-18):** The Notion export nests
-relation arrays under a `links:` parent key in frontmatter, NOT as top-level keys:
-
-```yaml
-# What the Notion export actually produces:
-links:
-  assigned_projects:
-    - projects/compute-agent-poc
-  related_people:
-    - people/riccardo-dsilva
-
-# What the spec assumed:
-assigned_projects:
-  - projects/compute-agent-poc
-related_people:
-  - people/riccardo-dsilva
-```
-
-332 of 368 imported pages use this `links:` nesting pattern. The relation
-extraction code must handle BOTH layouts: top-level keys (spec convention, what
-sync/agents will produce) and `links:`-nested keys (what Notion import produced).
-Simplest approach: if `links` key exists and is an object, flatten its children
-to top-level before extracting relations.
-
-**Second finding:** 19 files have unresolved Notion UUID paths as relation values
-(e.g. `nat-instance-migration-network-9908-projectsnat20instance20...325ec333f05b...md`).
-These are URL-encoded Notion paths that the title map couldn't match. They need a
-cleanup pass — either during relation extraction (skip values matching UUID pattern)
-or as a pre-import normalization enhancement. The affected files are listed in beads
-issue `gbrain-alt-pbt` (closed, findings preserved in reason).
-
-**Files changed:**
+**Solution implemented:**
 
 | File | Change |
 |------|--------|
-| `src/core/import-file.ts` | After parsing frontmatter, extract relation keys → upsert links |
-| `src/core/markdown.ts` or new `src/core/relations.ts` | Relation key → link_type mapping, extraction logic, `links:` flattening |
-| `test/import-file.test.ts` | Tests: frontmatter with relations produces correct links |
+| `src/core/relations.ts` | New module: `extractRelations()` extracts frontmatter relation keys → `RelationLink[]`. `flattenLinksNesting()` handles Notion's `links:` parent key. `syncPageLinks()` reconciles links (adds new, removes stale). Type-aware parent link mapping (e.g. `projects/` → `parent_project`). Notion UUID paths (32-char hex) skipped. |
+| `src/core/import-file.ts` | Transaction now calls `extractRelations()` + `syncPageLinks()` after tag reconciliation. Stale links removed when relations change. |
+| `test/relations.test.ts` | 26 tests: flattenLinksNesting (5), extractRelations (21) — covers all relation types, `links:` nesting, UUID filtering, parent type mapping, edge cases. |
+| `test/import-file.test.ts` | 7 new tests: addLink calls during import, parent type mapping, `links:` nesting, UUID skipping, stale link removal, no-relations passthrough. Mock engine updated with `getLinks` default. |
+| `CLAUDE.md` | Added `src/core/relations.ts` and `test/relations.test.ts` to key files and test listing. |
 
-**Acceptance:**
-- Import a page with `assigned_projects: [projects/foo]` → links table has `assigned_project` link
-- Import a page with `parent: aors/bar` → links table has `parent_aor` link
-- Import a page with `links: { assigned_projects: [...] }` nesting → same result as top-level
-- Relation values matching Notion UUID pattern are skipped (not inserted as links)
-- Existing pages without relations still import correctly
-- `bun test` passes
+**Critical finding handled — `links:` nesting:** 332/368 imported Notion pages nest
+relations under a `links:` parent key. `flattenLinksNesting()` lifts children to
+top-level before extraction, preserving existing top-level keys on conflict.
+
+**Second finding handled — Notion UUID paths:** 19 files had unresolved URL-encoded
+Notion paths with 32-char UUIDs. `isNotionUuidPath()` skips values matching the
+pattern (>40 chars with 32-char hex sequence).
+
+**Design decisions:**
+- `addLink()` errors are caught silently — target pages may not exist yet during bulk import (pages are imported in filesystem order, not dependency order).
+- Stale link reconciliation only runs when `existing` page or `relations.length > 0` — avoids unnecessary `getLinks()` calls for new pages with no relations.
+- Link type vocabulary matches the spec §2.7 exactly (e.g. `assigned_project`, `related_person`, `parent_task`, `belongs_to`, `manages`, `super`, `delegate`).
+
+**Acceptance:** ✅
+- Import a page with `assigned_projects: [projects/foo]` → links table has `assigned_project` link ✅
+- Import a page with `parent: aors/bar` → links table has `parent_aor` link ✅
+- Import a page with `links: { assigned_projects: [...] }` nesting → same result as top-level ✅
+- Relation values matching Notion UUID pattern are skipped (not inserted as links) ✅
+- Existing pages without relations still import correctly ✅
+- Stale links from previous import are removed when relations change ✅
+- `bun test` passes (700 tests, 0 failures) ✅
 
 ### Slice 3c — Relationships Zone Generation
 
@@ -464,9 +451,9 @@ Slice 3a      ─── Three-zone parser ────────────�
   │
 Slice 3b-pre  ─── Notion import data quality fixup ─── ✅
   │
-Slice 3b      ─── Frontmatter → links table ────────── ⬅ NEXT
+Slice 3b      ─── Frontmatter → links table ────────── ✅
   │
-Slice 3c      ─── Relationships zone generation ─────── 
+Slice 3c      ─── Relationships zone generation ─────── ⬅ NEXT
   │
 Slice 3d      ─── Reverse-link reconstruction ───────── 
   │

@@ -21,6 +21,7 @@ function mockEngine(overrides: Partial<Record<string, any>> = {}): BrainEngine {
       if (prop === '_calls') return calls;
       if (prop === 'getTags') return overrides.getTags || (() => Promise.resolve([]));
       if (prop === 'getPage') return overrides.getPage || (() => Promise.resolve(null));
+      if (prop === 'getLinks') return overrides.getLinks || (() => Promise.resolve([]));
       // transaction: just call the fn with the same engine (no real DB transaction in tests)
       if (prop === 'transaction') return async (fn: (tx: BrainEngine) => Promise<any>) => fn(engine);
       return track(prop);
@@ -545,6 +546,152 @@ No normalization needed.
 
     const ondisk = readFileSync(filePath, 'utf-8');
     expect(ondisk).toBe(clean);
+  });
+
+  test('extracts frontmatter relations into addLink calls', async () => {
+    const content = `---
+type: task
+title: Build Widget
+assigned_projects:
+  - projects/widget-platform
+related_people:
+  - people/alice
+  - people/bob
+delegate: people/carol
+---
+
+Build the widget.
+`;
+    const engine = mockEngine();
+    const result = await importFromContent(engine, 'tasks/build-widget', content, { noEmbed: true });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const linkCalls = calls.filter((c: any) => c.method === 'addLink');
+    expect(linkCalls.length).toBe(4);
+
+    const linkArgs = linkCalls.map((c: any) => ({
+      from: c.args[0], to: c.args[1], type: c.args[3],
+    }));
+    expect(linkArgs).toContainEqual({ from: 'tasks/build-widget', to: 'projects/widget-platform', type: 'assigned_project' });
+    expect(linkArgs).toContainEqual({ from: 'tasks/build-widget', to: 'people/alice', type: 'related_person' });
+    expect(linkArgs).toContainEqual({ from: 'tasks/build-widget', to: 'people/bob', type: 'related_person' });
+    expect(linkArgs).toContainEqual({ from: 'tasks/build-widget', to: 'people/carol', type: 'delegate' });
+  });
+
+  test('extracts parent relation with type-aware link type', async () => {
+    const content = `---
+type: project
+title: Sub Project
+parent: projects/mega-project
+---
+
+A child project.
+`;
+    const engine = mockEngine();
+    const result = await importFromContent(engine, 'projects/sub-project', content, { noEmbed: true });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const linkCalls = calls.filter((c: any) => c.method === 'addLink');
+    expect(linkCalls.length).toBe(1);
+    expect(linkCalls[0].args).toEqual(['projects/sub-project', 'projects/mega-project', '', 'parent_project']);
+  });
+
+  test('handles links: nesting from Notion export', async () => {
+    const content = `---
+type: task
+title: Notion Nested
+links:
+  assigned_projects:
+    - projects/from-notion
+  related_people:
+    - people/notion-person
+---
+
+Imported from Notion.
+`;
+    const engine = mockEngine();
+    const result = await importFromContent(engine, 'tasks/notion-nested', content, { noEmbed: true });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const linkCalls = calls.filter((c: any) => c.method === 'addLink');
+    expect(linkCalls.length).toBe(2);
+
+    const linkArgs = linkCalls.map((c: any) => ({
+      from: c.args[0], to: c.args[1], type: c.args[3],
+    }));
+    expect(linkArgs).toContainEqual({ from: 'tasks/notion-nested', to: 'projects/from-notion', type: 'assigned_project' });
+    expect(linkArgs).toContainEqual({ from: 'tasks/notion-nested', to: 'people/notion-person', type: 'related_person' });
+  });
+
+  test('skips Notion UUID paths in relations', async () => {
+    const content = `---
+type: task
+title: UUID Relations
+assigned_projects:
+  - projects/good-project
+  - nat-instance-migration-9908-projectsnat20instance20abc12345def67890abc12345def67890
+---
+
+Has one valid and one junk relation.
+`;
+    const engine = mockEngine();
+    const result = await importFromContent(engine, 'tasks/uuid-relations', content, { noEmbed: true });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const linkCalls = calls.filter((c: any) => c.method === 'addLink');
+    expect(linkCalls.length).toBe(1);
+    expect(linkCalls[0].args[1]).toBe('projects/good-project');
+  });
+
+  test('removes stale links when relations change', async () => {
+    const content = `---
+type: task
+title: Changed Relations
+assigned_projects:
+  - projects/new-project
+---
+
+New relations, old ones should be removed.
+`;
+    const engine = mockEngine({
+      getPage: () => Promise.resolve({ content_hash: 'old-hash' }),
+      getLinks: () => Promise.resolve([
+        { from_slug: 'tasks/changed', to_slug: 'projects/old-project', link_type: 'assigned_project', context: '' },
+      ]),
+    });
+    const result = await importFromContent(engine, 'tasks/changed', content, { noEmbed: true });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const removeLinkCalls = calls.filter((c: any) => c.method === 'removeLink');
+    expect(removeLinkCalls.length).toBe(1);
+    expect(removeLinkCalls[0].args).toEqual(['tasks/changed', 'projects/old-project']);
+
+    const addLinkCalls = calls.filter((c: any) => c.method === 'addLink');
+    expect(addLinkCalls.length).toBe(1);
+    expect(addLinkCalls[0].args[1]).toBe('projects/new-project');
+  });
+
+  test('no addLink calls when frontmatter has no relations', async () => {
+    const content = `---
+type: resource
+title: Plain Page
+status: done
+---
+
+Just content, no relations.
+`;
+    const engine = mockEngine();
+    const result = await importFromContent(engine, 'resources/plain', content, { noEmbed: true });
+
+    expect(result.status).toBe('imported');
+    const calls = (engine as any)._calls;
+    const linkCalls = calls.filter((c: any) => c.method === 'addLink');
+    expect(linkCalls.length).toBe(0);
   });
 
   test('normalizes _events field rename during import with titleMap', async () => {

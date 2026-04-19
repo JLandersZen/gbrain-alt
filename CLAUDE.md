@@ -25,7 +25,8 @@ markdown files (tool-agnostic, work with both CLI and plugin contexts).
 - `src/core/env.ts` — .env file auto-loading with walk-up discovery (project root, .gbrain/, global). Loaded first in cli.ts.
 - `src/core/db.ts` — Connection management, schema initialization
 - `src/commands/migrate-engine.ts` — Bidirectional engine migration (`gbrain migrate --to supabase/pglite`)
-- `src/core/import-file.ts` — importFromFile + importFromContent (chunk + embed + tags)
+- `src/core/import-file.ts` — importFromFile + importFromContent (chunk + embed + tags + links)
+- `src/core/relations.ts` — Frontmatter → links table extraction. Handles `links:` nesting from Notion, Notion UUID filtering, type-aware parent links. Called by `importFromContent()`.
 - `src/core/sync.ts` — Pure sync functions (manifest parsing, filtering, slug conversion)
 - `src/core/storage.ts` — Pluggable storage interface (S3, Supabase Storage, local)
 - `src/core/supabase-admin.ts` — Supabase admin API (project discovery, pgvector check)
@@ -84,7 +85,8 @@ Unit tests: `test/markdown.test.ts` (frontmatter parsing), `test/chunkers/recurs
 (chunking), `test/sync.test.ts` (sync logic), `test/parity.test.ts` (operations contract
 parity), `test/cli.test.ts` (CLI structure), `test/config.test.ts` (config redaction),
 `test/config-discovery.test.ts` (local-first config walk-up discovery, setConfigDir, resetConfigDir),
-`test/files.test.ts` (MIME/hash), `test/import-file.test.ts` (import pipeline),
+`test/files.test.ts` (MIME/hash), `test/import-file.test.ts` (import pipeline + link extraction),
+`test/relations.test.ts` (frontmatter → links extraction, links: nesting, UUID filtering, parent type mapping),
 `test/upgrade.test.ts` (schema migrations), `test/doctor.test.ts` (doctor command),
 `test/file-migration.test.ts` (file migration), `test/file-resolver.test.ts` (file resolution),
 `test/import-resume.test.ts` (import checkpoints), `test/migrate.test.ts` (migration),

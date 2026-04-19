@@ -6,6 +6,7 @@ import { chunkText } from './chunkers/recursive.ts';
 import { embedBatch } from './embedding.ts';
 import { slugifyPath } from './sync.ts';
 import { normalizeContent, type TitleMap } from './normalize.ts';
+import { extractRelations, syncPageLinks } from './relations.ts';
 import type { ChunkInput } from './types.ts';
 
 export interface ImportResult {
@@ -124,6 +125,12 @@ export async function importFromContent(
     }
     for (const tag of parsed.tags) {
       await tx.addTag(slug, tag);
+    }
+
+    // Link reconciliation: extract relations from frontmatter → upsert into links table
+    const relations = extractRelations(parsed.frontmatter, slug);
+    if (relations.length > 0 || existing) {
+      await syncPageLinks(tx, slug, relations);
     }
 
     if (chunks.length > 0) {
