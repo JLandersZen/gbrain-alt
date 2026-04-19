@@ -60,9 +60,46 @@ studied in detail so conflict resolutions can be executed confidently.
 - [x] Upstream sync.ts changes understood
 - [x] List of upstream tests needing type fixups compiled (27 files, 150+ instances)
 - [x] Sentinel-based four-zone parser code written and tested in isolation (32 tests pass)
-- [ ] Committed (backup + research notes) and pushed
+- [x] Committed and pushed (commit `f34ff1a`)
 
 ### Estimated effort: 1–2 days
+
+### Key Findings (for downstream slices)
+
+**Upstream splitBody** (`origin/master:src/core/markdown.ts`):
+- Signature: `splitBody(body: string): { compiled_truth: string; timeline: string }`
+- Sentinel precedence: `<!-- timeline -->` > `--- timeline ---` > bare `---` + `## Timeline`/`## History` heading
+- `serializeMarkdown()` emits `\n\n<!-- timeline -->\n\n` between zones
+- Called by `parseMarkdown()` → used by `importFromContent()` and `importFromFile()`
+
+**Upstream ParsedPage** (`origin/master:src/core/import-file.ts`):
+- Interface: `{ type, title, compiled_truth, timeline, frontmatter, tags }`
+- Returned for both 'imported' AND 'skipped' statuses in `ImportResult`
+- Consumed by `runAutoLink()` post-hook in `operations.ts` (runs after import, extracts links from body)
+- Auto-link skipped for `ctx.remote === true` (security gate)
+
+**Upstream sync** (`origin/master:src/commands/sync.ts`):
+- No nested transaction (PGLite deadlock fix) — each file imports atomically
+- Auto-extract: always runs post-sync (links + timeline from content)
+- Auto-embed: conditional, skipped for >100 files
+
+**Upstream engine** — 5 new methods (both PGLite + Postgres implement them):
+- `getAllSlugs(): Promise<Set<string>>`
+- `addLinksBatch(links: LinkBatchInput[]): Promise<number>`
+- `removeLink(from, to, linkType?): Promise<void>`
+- `traversePaths(slug, opts?): Promise<GraphPath[]>`
+- `getBacklinkCounts(slugs: string[]): Promise<Map<string, number>>`
+
+**Type conflicts** (Slice 3 needs these):
+- 27 test/eval files with 150+ instances of upstream types (company, deal, yc, civic, concept, source, media, writing, analysis, guide, hardware, architecture)
+- Heaviest files: `test/pglite-engine.test.ts` (17), `test/benchmark-search-quality.ts` (20+), `test/markdown.test.ts` (12)
+- E2E fixtures in `test/e2e/fixtures/` have YAML frontmatter with hardcoded types
+
+**Pre-built sentinel parser** (`src/core/split-body-sentinel.ts`):
+- Drop-in replacement for `splitBody` in Slice 5
+- Returns `{ compiled_truth, relationships, timeline }` (three zones)
+- Exports `RELATIONSHIPS_SENTINEL` and `TIMELINE_SENTINEL` constants
+- Tests: `test/split-body-sentinel.test.ts` (32 tests)
 
 ---
 
