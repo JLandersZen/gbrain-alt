@@ -202,9 +202,9 @@ export async function importFromFile(
   // Pass the path-derived slug explicitly so that any future change to
   // parseMarkdown's precedence rules cannot re-introduce this bug.
   // titleMap already applied above — importFromContent's normalize pass is a no-op.
-  const result = await importFromContent(engine, expectedSlug, content, opts);
-
-  if (result.status === 'imported' && opts.titleMap) {
+  // Regenerate relationships zone regardless of import status — the file
+  // may already be in the DB (skipped) but still need its zone updated.
+  if (opts.titleMap) {
     const parsed = parseMarkdown(content, relativePath);
     const zone = renderRelationshipsZone(parsed.frontmatter, opts.titleMap);
     if (zone !== parsed.relationships.trim()) {
@@ -215,10 +215,12 @@ export async function importFromFile(
         { type: parsed.type, title: parsed.title, tags: parsed.tags, relationships: zone },
       );
       writeFileSync(filePath, updated, 'utf-8');
+      // Re-read so importFromContent sees the updated content with the zone
+      content = updated;
     }
   }
 
-  return result;
+  return importFromContent(engine, expectedSlug, content, opts);
 }
 
 // Backward compat
