@@ -209,6 +209,47 @@ describe('normalizeFrontmatter', () => {
     expect(issues).toHaveLength(0);
     expect(fixed.type).toBe('task');
   });
+
+  test('flattens links: nesting to top-level', () => {
+    const { fixed, issues } = normalizeFrontmatter(
+      {
+        type: 'task',
+        links: {
+          assigned_projects: ['projects/alpha'],
+          related_people: ['people/bob'],
+        },
+      },
+      'tasks/foo.md', titleMap,
+    );
+    expect(fixed.links).toBeUndefined();
+    expect(fixed.assigned_projects).toEqual(['projects/alpha']);
+    expect(fixed.related_people).toEqual(['people/bob']);
+    expect(issues.some(i => i.rule === 'links-nesting')).toBe(true);
+  });
+
+  test('links: flattening preserves existing top-level keys', () => {
+    const { fixed } = normalizeFrontmatter(
+      {
+        assigned_projects: ['projects/existing'],
+        links: {
+          assigned_projects: ['projects/nested'],
+          related_people: ['people/bob'],
+        },
+      },
+      'tasks/foo.md', titleMap,
+    );
+    expect(fixed.assigned_projects).toEqual(['projects/existing']);
+    expect(fixed.related_people).toEqual(['people/bob']);
+  });
+
+  test('links: as array is not flattened (not Notion nesting)', () => {
+    const { fixed, issues } = normalizeFrontmatter(
+      { links: ['some-link'] },
+      'resources/foo.md', titleMap,
+    );
+    expect(fixed.links).toEqual(['some-link']);
+    expect(issues.filter(i => i.rule === 'links-nesting')).toHaveLength(0);
+  });
 });
 
 // ── parseNotionPath ────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import type { PageType } from './types.ts';
 export interface NormalizeIssue {
   file: string;
   line: number;
-  rule: 'plural-type' | 'field-rename' | 'display-name-relation' | 'notion-path' | 'notion-url' | 'hr-separator';
+  rule: 'plural-type' | 'field-rename' | 'display-name-relation' | 'notion-path' | 'notion-url' | 'hr-separator' | 'links-nesting';
   message: string;
   fixable: boolean;
 }
@@ -175,7 +175,27 @@ export function normalizeFrontmatter(
   titleMap: TitleMap,
 ): { fixed: Record<string, unknown>; issues: NormalizeIssue[] } {
   const issues: NormalizeIssue[] = [];
-  const result = { ...fm };
+  let result = { ...fm };
+
+  // Flatten Notion's links: nesting to top-level
+  const links = result.links;
+  if (links && typeof links === 'object' && !Array.isArray(links)) {
+    const nested = links as Record<string, unknown>;
+    const lifted = Object.keys(nested);
+    for (const key of lifted) {
+      if (!(key in result)) {
+        result[key] = nested[key];
+      }
+    }
+    delete result.links;
+    if (lifted.length > 0) {
+      issues.push({
+        file: filePath, line: 1, rule: 'links-nesting',
+        message: `flattened links: { ${lifted.join(', ')} } to top-level`,
+        fixable: true,
+      });
+    }
+  }
 
   if (typeof result.type === 'string') {
     const { normalized, changed } = normalizeType(result.type);
