@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { splitBody, RELATIONSHIPS_SENTINEL, TIMELINE_SENTINEL } from '../src/core/split-body-sentinel.ts';
+import { splitBody, RELATIONSHIPS_SENTINEL, TIMELINE_SENTINEL } from '../src/core/markdown.ts';
 
 describe('splitBody (sentinel-based four-zone)', () => {
 

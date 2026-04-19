@@ -311,13 +311,21 @@ a202ab8  feat: extend parser to four-zone page structure
 
 ### Definition of Done
 
-- [ ] Four-zone parser uses sentinels, not bare `---`
-- [ ] Backward-compatible with old-format pages (heading heuristics)
-- [ ] `renderRelationshipsZone()` emits `<!-- relationships -->` sentinel
-- [ ] Round-trip parse/render is lossless
-- [ ] ALL existing markdown tests pass (with updated fixtures)
-- [ ] New sentinel-specific tests pass
+- [x] Four-zone parser uses sentinels, not bare `---`
+- [x] Backward-compatible with old-format pages (heading heuristics)
+- [x] `serializeMarkdown()` emits `<!-- relationships -->` sentinel when relationships zone present
+- [x] Round-trip parse/render is lossless (tested in both markdown.test.ts and split-body-sentinel.test.ts)
+- [x] ALL existing markdown tests pass (with updated fixtures)
+- [x] New sentinel-specific tests pass (63 tests across 2 files)
 - [ ] Committed
+
+### Conflict resolutions
+
+- **markdown.ts** — replaced upstream's two-zone `splitBody` (returns `{compiled_truth, timeline}`) with four-zone version (returns `{compiled_truth, relationships, timeline}`). Same sentinel logic for timeline zone (backward-compatible). Added `<!-- relationships -->` sentinel for the relationships zone. Added `SplitResult` interface, `RELATIONSHIPS_SENTINEL`, `TIMELINE_SENTINEL` constants.
+- **markdown.ts ParsedMarkdown** — added `relationships: string` field
+- **markdown.ts serializeMarkdown** — added optional `relationships?: string` parameter; emits `<!-- relationships -->` sentinel when present. Existing callers (cli.ts, export.ts) pass DB data which has no relationships column, so they pass `undefined` and behavior is unchanged.
+- **import-file.ts ParsedPage** — added `relationships: string` field, populated from `parseMarkdown` result
+- **split-body-sentinel.ts** — REMOVED. The pre-built sentinel parser from Slice 1 was integrated directly into `markdown.ts`. The test file (`test/split-body-sentinel.test.ts`) now imports from `markdown.ts`.
 
 ### Risk mitigation
 

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { parseMarkdown, serializeMarkdown, splitBody } from '../src/core/markdown.ts';
+import { parseMarkdown, serializeMarkdown, splitBody, RELATIONSHIPS_SENTINEL, TIMELINE_SENTINEL } from '../src/core/markdown.ts';
 
 describe('Markdown Parser', () => {
   test('parses frontmatter + compiled_truth + timeline (explicit sentinel)', () => {
@@ -21,8 +21,32 @@ Paul Graham argues that startups should do unscalable things early on.
     expect(parsed.title).toBe("Do Things That Don't Scale");
     expect(parsed.tags).toEqual(['startups', 'growth']);
     expect(parsed.compiled_truth).toContain('unscalable things');
+    expect(parsed.relationships).toBe('');
     expect(parsed.timeline).toContain('Published on paulgraham.com');
     expect(parsed.timeline).toContain('batch kickoff talk');
+  });
+
+  test('parses four-zone page (compiled_truth + relationships + timeline)', () => {
+    const md = `---
+type: project
+title: Alpha
+---
+
+Alpha is the flagship.
+
+<!-- relationships -->
+
+## Relationships
+- **AOR:** [Engineering](aors/engineering.md)
+
+<!-- timeline -->
+
+- 2024-01-01: Created
+`;
+    const parsed = parseMarkdown(md);
+    expect(parsed.compiled_truth).toContain('Alpha is the flagship');
+    expect(parsed.relationships).toContain('[Engineering](aors/engineering.md)');
+    expect(parsed.timeline).toContain('2024-01-01: Created');
   });
 
   test('handles no timeline separator', () => {
@@ -92,15 +116,17 @@ Content
 describe('splitBody', () => {
   test('splits at <!-- timeline --> sentinel', () => {
     const body = 'Above the line\n\n<!-- timeline -->\n\nBelow the line';
-    const { compiled_truth, timeline } = splitBody(body);
+    const { compiled_truth, relationships, timeline } = splitBody(body);
     expect(compiled_truth).toContain('Above the line');
+    expect(relationships).toBe('');
     expect(timeline).toContain('Below the line');
   });
 
   test('splits at --- timeline --- sentinel', () => {
     const body = 'Above the line\n\n--- timeline ---\n\nBelow the line';
-    const { compiled_truth, timeline } = splitBody(body);
+    const { compiled_truth, relationships, timeline } = splitBody(body);
     expect(compiled_truth).toContain('Above the line');
+    expect(relationships).toBe('');
     expect(timeline).toContain('Below the line');
   });
 
@@ -135,8 +161,9 @@ describe('splitBody', () => {
 
   test('returns all as compiled_truth if no sentinel', () => {
     const body = 'Just some content\nWith multiple lines';
-    const { compiled_truth, timeline } = splitBody(body);
+    const { compiled_truth, relationships, timeline } = splitBody(body);
     expect(compiled_truth).toBe(body);
+    expect(relationships).toBe('');
     expect(timeline).toBe('');
   });
 
@@ -154,6 +181,31 @@ describe('splitBody', () => {
     expect(compiled_truth).toContain('More body content.');
     expect(compiled_truth).not.toContain('Timeline entry');
     expect(timeline).toContain('Timeline entry');
+  });
+
+  test('splits at <!-- relationships --> sentinel into three zones', () => {
+    const body = 'Main content\n\n<!-- relationships -->\n\n## Relationships\n- **Parent:** [Eng](aors/eng.md)\n\n<!-- timeline -->\n\n- 2024-01-01: Created';
+    const { compiled_truth, relationships, timeline } = splitBody(body);
+    expect(compiled_truth).toContain('Main content');
+    expect(relationships).toContain('## Relationships');
+    expect(relationships).toContain('[Eng](aors/eng.md)');
+    expect(timeline).toContain('2024-01-01: Created');
+  });
+
+  test('relationships-only page (no timeline)', () => {
+    const body = 'Content\n\n<!-- relationships -->\n\n## Relationships\n- **Owner:** [Alice](people/alice.md)';
+    const { compiled_truth, relationships, timeline } = splitBody(body);
+    expect(compiled_truth).toContain('Content');
+    expect(relationships).toContain('[Alice](people/alice.md)');
+    expect(timeline).toBe('');
+  });
+
+  test('relationships sentinel after timeline sentinel is timeline content', () => {
+    const body = 'CT\n<!-- timeline -->\nTL\n<!-- relationships -->\nREL';
+    const { compiled_truth, relationships, timeline } = splitBody(body);
+    expect(compiled_truth).toBe('CT');
+    expect(relationships).toBe('');
+    expect(timeline).toBe('TL\n<!-- relationships -->\nREL');
   });
 });
 
@@ -189,6 +241,70 @@ Paul Graham argues that startups should do unscalable things early on.
     expect(reparsed.compiled_truth).toBe(parsed.compiled_truth);
     expect(reparsed.timeline).toBe(parsed.timeline);
     expect(reparsed.frontmatter.custom).toBe('value');
+  });
+
+  test('round-trips four-zone page (compiled_truth + relationships + timeline)', () => {
+    const original = `---
+type: project
+title: Alpha Project
+tags:
+  - engineering
+---
+
+Alpha is the flagship project.
+
+<!-- relationships -->
+
+## Relationships
+- **Assigned AORs:** [Engineering](aors/engineering.md)
+- **Related Projects:** [Beta](projects/beta.md)
+
+<!-- timeline -->
+
+- 2024-01-01: Project kickoff
+- 2024-03-15: v1.0 shipped
+`;
+    const parsed = parseMarkdown(original);
+    expect(parsed.relationships).toContain('[Engineering](aors/engineering.md)');
+    expect(parsed.timeline).toContain('v1.0 shipped');
+
+    const serialized = serializeMarkdown(
+      parsed.frontmatter,
+      parsed.compiled_truth,
+      parsed.timeline,
+      { type: parsed.type, title: parsed.title, tags: parsed.tags },
+      parsed.relationships,
+    );
+
+    const reparsed = parseMarkdown(serialized);
+    expect(reparsed.compiled_truth).toBe(parsed.compiled_truth);
+    expect(reparsed.relationships).toBe(parsed.relationships);
+    expect(reparsed.timeline).toBe(parsed.timeline);
+  });
+
+  test('serializes without relationships when none present', () => {
+    const serialized = serializeMarkdown(
+      {},
+      'Content here',
+      '- 2024-01-01: Event',
+      { type: 'resource' as any, title: 'Test', tags: [] },
+    );
+    expect(serialized).toContain('Content here');
+    expect(serialized).toContain(TIMELINE_SENTINEL);
+    expect(serialized).not.toContain(RELATIONSHIPS_SENTINEL);
+  });
+
+  test('serializes with relationships and no timeline', () => {
+    const serialized = serializeMarkdown(
+      {},
+      'Content',
+      '',
+      { type: 'project' as any, title: 'Test', tags: [] },
+      '## Relationships\n- **Owner:** [Alice](people/alice.md)',
+    );
+    expect(serialized).toContain(RELATIONSHIPS_SENTINEL);
+    expect(serialized).not.toContain(TIMELINE_SENTINEL);
+    expect(serialized).toContain('[Alice](people/alice.md)');
   });
 });
 

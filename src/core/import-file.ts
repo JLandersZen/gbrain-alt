@@ -16,6 +16,7 @@ export interface ParsedPage {
   type: PageType;
   title: string;
   compiled_truth: string;
+  relationships: string;
   timeline: string;
   frontmatter: Record<string, unknown>;
   tags: string[];
@@ -86,6 +87,7 @@ export async function importFromContent(
     type: parsed.type,
     title: parsed.title,
     compiled_truth: parsed.compiled_truth,
+    relationships: parsed.relationships || '',
     timeline: parsed.timeline || '',
     frontmatter: parsed.frontmatter,
     tags: parsed.tags,

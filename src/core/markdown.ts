@@ -5,6 +5,7 @@ import { slugifyPath } from './sync.ts';
 export interface ParsedMarkdown {
   frontmatter: Record<string, unknown>;
   compiled_truth: string;
+  relationships: string;
   timeline: string;
   slug: string;
   type: PageType;
@@ -23,21 +24,28 @@ export interface ParsedMarkdown {
  *   ---
  *   Compiled truth content here...
  *
+ *   <!-- relationships -->
+ *   Relationships zone here...
+ *
  *   <!-- timeline -->
  *   Timeline content here...
  *
- * The first --- pair is YAML frontmatter (handled by gray-matter).
- * After frontmatter, the body is split at the first recognized timeline
- * sentinel: `<!-- timeline -->` (preferred), `--- timeline ---` (decorated),
- * or a plain `---` immediately preceding a `## Timeline` / `## History`
- * heading (backward-compat for existing files). A bare `---` in body text
- * is treated as a markdown horizontal rule, not a timeline separator.
+ * Four-zone page structure using sentinel-based splitting:
+ *   Zone 1: compiled_truth (main content)
+ *   Zone 2: relationships (auto-generated from frontmatter relations)
+ *   Zone 3: timeline (append-only evidence log)
+ *
+ * Sentinel precedence:
+ *   Relationships: `<!-- relationships -->` or `<!--relationships-->`
+ *   Timeline: `<!-- timeline -->` (preferred), `--- timeline ---` (decorated),
+ *     or `---` immediately preceding `## Timeline`/`## History` heading
+ *
+ * A bare `---` in body text is a markdown horizontal rule, not a separator.
  */
 export function parseMarkdown(content: string, filePath?: string): ParsedMarkdown {
   const { data: frontmatter, content: body } = matter(content);
 
-  // Split body at first standalone ---
-  const { compiled_truth, timeline } = splitBody(body);
+  const { compiled_truth, relationships, timeline } = splitBody(body);
 
   // Extract metadata from frontmatter
   const type = (frontmatter.type as PageType) || inferType(filePath);
@@ -55,6 +63,7 @@ export function parseMarkdown(content: string, filePath?: string): ParsedMarkdow
   return {
     frontmatter: cleanFrontmatter,
     compiled_truth: compiled_truth.trim(),
+    relationships: relationships.trim(),
     timeline: timeline.trim(),
     slug,
     type,
@@ -63,34 +72,69 @@ export function parseMarkdown(content: string, filePath?: string): ParsedMarkdow
   };
 }
 
-/**
- * Split body content at the first recognized timeline sentinel.
- * Returns compiled_truth (before) and timeline (after).
- *
- * Recognized sentinels (in order of precedence):
- *   1. `<!-- timeline -->` — preferred, unambiguous, what serializeMarkdown emits
- *   2. `--- timeline ---` — decorated separator
- *   3. `---` ONLY when the next non-empty line is `## Timeline` or `## History`
- *      (backward-compat fallback for older gbrain-written files)
- *
- * A plain `---` line is a markdown horizontal rule, NOT a timeline separator.
- * Treating bare `---` as a separator caused 83% content truncation on wiki corpora.
- */
-export function splitBody(body: string): { compiled_truth: string; timeline: string } {
-  const lines = body.split('\n');
-  const splitIndex = findTimelineSplitIndex(lines);
-
-  if (splitIndex === -1) {
-    return { compiled_truth: body, timeline: '' };
-  }
-
-  const compiled_truth = lines.slice(0, splitIndex).join('\n');
-  const timeline = lines.slice(splitIndex + 1).join('\n');
-  return { compiled_truth, timeline };
+export interface SplitResult {
+  compiled_truth: string;
+  relationships: string;
+  timeline: string;
 }
 
-function findTimelineSplitIndex(lines: string[]): number {
-  for (let i = 0; i < lines.length; i++) {
+/**
+ * Split body content into up to three zones using sentinel markers.
+ *
+ * Zone 1 (compiled_truth): everything before the first sentinel
+ * Zone 2 (relationships):  between `<!-- relationships -->` and timeline sentinel
+ * Zone 3 (timeline):       after the timeline sentinel
+ *
+ * Recognized sentinels:
+ *   Relationships: `<!-- relationships -->` or `<!--relationships-->`
+ *   Timeline: `<!-- timeline -->` (preferred), `--- timeline ---` (decorated),
+ *     or `---` ONLY when the next non-empty line is `## Timeline`/`## History`
+ *
+ * A plain `---` line is a markdown horizontal rule, NOT a zone separator.
+ * Treating bare `---` as a separator caused 83% content truncation on wiki corpora.
+ */
+export function splitBody(body: string): SplitResult {
+  const lines = body.split('\n');
+
+  const timeIdx = findTimelineSplitIndex(lines, 0);
+  const relIdx = findRelationshipsSplitIndex(lines, timeIdx);
+
+  if (relIdx === -1 && timeIdx === -1) {
+    return { compiled_truth: body, relationships: '', timeline: '' };
+  }
+
+  if (relIdx !== -1 && timeIdx !== -1) {
+    const compiled_truth = lines.slice(0, relIdx).join('\n');
+    const relationships = lines.slice(relIdx + 1, timeIdx).join('\n');
+    const timeline = lines.slice(timeIdx + 1).join('\n');
+    return { compiled_truth, relationships, timeline };
+  }
+
+  if (relIdx !== -1) {
+    const compiled_truth = lines.slice(0, relIdx).join('\n');
+    const relationships = lines.slice(relIdx + 1).join('\n');
+    return { compiled_truth, relationships, timeline: '' };
+  }
+
+  // timeIdx !== -1
+  const compiled_truth = lines.slice(0, timeIdx).join('\n');
+  const timeline = lines.slice(timeIdx + 1).join('\n');
+  return { compiled_truth, relationships: '', timeline };
+}
+
+function findRelationshipsSplitIndex(lines: string[], beforeIndex: number): number {
+  const limit = beforeIndex === -1 ? lines.length : beforeIndex;
+  for (let i = 0; i < limit; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed === '<!-- relationships -->' || trimmed === '<!--relationships-->') {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function findTimelineSplitIndex(lines: string[], startFrom: number): number {
+  for (let i = startFrom; i < lines.length; i++) {
     const trimmed = lines[i].trim();
 
     if (trimmed === '<!-- timeline -->' || trimmed === '<!--timeline-->') {
@@ -116,15 +160,22 @@ function findTimelineSplitIndex(lines: string[]): number {
   return -1;
 }
 
+export const RELATIONSHIPS_SENTINEL = '<!-- relationships -->';
+export const TIMELINE_SENTINEL = '<!-- timeline -->';
+
 /**
  * Serialize a page back to markdown format.
- * Produces: frontmatter + compiled_truth + --- + timeline
+ * Produces: frontmatter + compiled_truth + [relationships] + [timeline]
+ *
+ * When a relationships zone is present, it's preceded by `<!-- relationships -->`.
+ * When a timeline zone is present, it's preceded by `<!-- timeline -->`.
  */
 export function serializeMarkdown(
   frontmatter: Record<string, unknown>,
   compiled_truth: string,
   timeline: string,
   meta: { type: PageType; title: string; tags: string[] },
+  relationships?: string,
 ): string {
   // Build full frontmatter including type, title, tags
   const fullFrontmatter: Record<string, unknown> = {
@@ -139,8 +190,11 @@ export function serializeMarkdown(
   const yamlContent = matter.stringify('', fullFrontmatter).trim();
 
   let body = compiled_truth;
+  if (relationships) {
+    body += '\n\n' + RELATIONSHIPS_SENTINEL + '\n\n' + relationships;
+  }
   if (timeline) {
-    body += '\n\n<!-- timeline -->\n\n' + timeline;
+    body += '\n\n' + TIMELINE_SENTINEL + '\n\n' + timeline;
   }
 
   return yamlContent + '\n\n' + body + '\n';
