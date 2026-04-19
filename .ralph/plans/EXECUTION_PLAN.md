@@ -331,17 +331,50 @@ frontmatter relation arrays. Known relation keys (`assigned_*`, `related_*`,
 `parent`, `organizations`, `people`, `delegate`, `manager`, `supers`, `subs`)
 are parsed into typed links.
 
+**Critical finding from Notion import (2026-04-18):** The Notion export nests
+relation arrays under a `links:` parent key in frontmatter, NOT as top-level keys:
+
+```yaml
+# What the Notion export actually produces:
+links:
+  assigned_projects:
+    - projects/compute-agent-poc
+  related_people:
+    - people/riccardo-dsilva
+
+# What the spec assumed:
+assigned_projects:
+  - projects/compute-agent-poc
+related_people:
+  - people/riccardo-dsilva
+```
+
+332 of 368 imported pages use this `links:` nesting pattern. The relation
+extraction code must handle BOTH layouts: top-level keys (spec convention, what
+sync/agents will produce) and `links:`-nested keys (what Notion import produced).
+Simplest approach: if `links` key exists and is an object, flatten its children
+to top-level before extracting relations.
+
+**Second finding:** 19 files have unresolved Notion UUID paths as relation values
+(e.g. `nat-instance-migration-network-9908-projectsnat20instance20...325ec333f05b...md`).
+These are URL-encoded Notion paths that the title map couldn't match. They need a
+cleanup pass — either during relation extraction (skip values matching UUID pattern)
+or as a pre-import normalization enhancement. The affected files are listed in beads
+issue `gbrain-alt-pbt` (closed, findings preserved in reason).
+
 **Files changed:**
 
 | File | Change |
 |------|--------|
 | `src/core/import-file.ts` | After parsing frontmatter, extract relation keys → upsert links |
-| `src/core/markdown.ts` or new `src/core/relations.ts` | Relation key → link_type mapping, extraction logic |
+| `src/core/markdown.ts` or new `src/core/relations.ts` | Relation key → link_type mapping, extraction logic, `links:` flattening |
 | `test/import-file.test.ts` | Tests: frontmatter with relations produces correct links |
 
 **Acceptance:**
 - Import a page with `assigned_projects: [projects/foo]` → links table has `assigned_project` link
 - Import a page with `parent: aors/bar` → links table has `parent_aor` link
+- Import a page with `links: { assigned_projects: [...] }` nesting → same result as top-level
+- Relation values matching Notion UUID pattern are skipped (not inserted as links)
 - Existing pages without relations still import correctly
 - `bun test` passes
 
@@ -459,7 +492,7 @@ Phase 2 validated Phase 1. Phase 3 fixes gaps discovered during Phase 2.
 | Notion exports one-sided relations | ✅ Designed | Reverse-link reconstruction post-pass (Slice 3d). Not Notion-specific. |
 | Relations not navigable in markdown viewers | ✅ Designed | Four-zone structure with generated relationships zone (Slice 3c). |
 | Sync writes back to user files (new behavior) | **Active** | Users must understand relationships zone is generated. Git diff shows changes. |
-| Pages with literal `---` in compiled truth | **Active** | `splitBody()` splits on first `---`. Workaround: use `***` or `___` for horizontal rules in content. |
+| Pages with literal `---` in compiled truth | ✅ Resolved | `normalizeBody()` converts `---` HRs to `***` during import. Verified: 0 body `---` in 368 imported pages. |
 | Notion migrate produces plural type values | ✅ Resolved (3b-pre) | `parseMarkdown()` singularizes via `normalizeType()` on every parse. |
 | Relations store display names not slug paths | ✅ Resolved (3b-pre) | `runImport()` pre-scans titles, `importFromContent()` resolves via `titleMap`. |
 | `_events` field uses wrong name | ✅ Resolved (3b-pre) | `parseMarkdown()` renames via `FIELD_RENAMES` map. |
@@ -468,7 +501,9 @@ Phase 2 validated Phase 1. Phase 3 fixes gaps discovered during Phase 2.
 | Publish command won't strip relationships zone | **Active (3e)** | `makeShareable()` regex only matches `## Timeline`, not `## Relationships`. Fix when Slice 3c generates the zone. |
 | Existing pages with multiple `---` reinterpreted | **Active** | Three-zone parser treats middle section as relationships. Pages with extra `---` in their timeline will have that content moved to relationships zone. Mitigation: only pages explicitly given a relationships zone via sync will have two separators. Existing two-zone pages are backwards compatible. |
 | Embed silently skips without OPENAI_API_KEY | **Active** | `gbrain embed` produces no error when key is missing. Beads: `gbrain-alt-qbv`. Fix: upfront key check in embed codepath. |
-| No .env auto-loading in CLI | **Active** | Users must manually export API keys every terminal session. Beads: `gbrain-alt-qbv`. Fix: dotenv loading early in `src/cli.ts`, walk-up discovery (project root, then `.gbrain/`). |
+| No .env auto-loading in CLI | ✅ Resolved | `.env` auto-loading with walk-up discovery implemented in `src/core/env.ts`. Beads: `gbrain-alt-qbv` closed. |
+| Notion export nests relations under `links:` key | **Active (3b)** | 332/368 pages have relations under `links:` parent key, not top-level. Slice 3b must flatten before extracting. |
+| 19 files with unresolved Notion UUID paths | **Active (3b)** | URL-encoded Notion paths with 32-char UUIDs survived as relation values. Need cleanup pass or skip during relation extraction. Files listed in `gbrain-alt-pbt` close reason. |
 
 ---
 

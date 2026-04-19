@@ -1,11 +1,11 @@
-import { readFileSync, statSync, lstatSync } from 'fs';
+import { readFileSync, writeFileSync, statSync, lstatSync } from 'fs';
 import { createHash } from 'crypto';
 import type { BrainEngine } from './engine.ts';
 import { parseMarkdown } from './markdown.ts';
 import { chunkText } from './chunkers/recursive.ts';
 import { embedBatch } from './embedding.ts';
 import { slugifyPath } from './sync.ts';
-import { normalizeFrontmatter, normalizeBody, type TitleMap } from './normalize.ts';
+import { normalizeContent, type TitleMap } from './normalize.ts';
 import type { ChunkInput } from './types.ts';
 
 export interface ImportResult {
@@ -48,20 +48,17 @@ export async function importFromContent(
     };
   }
 
-  const parsed = parseMarkdown(content, slug + '.md');
-
-  // Normalize frontmatter relations and body content when a title map is available.
-  // parseMarkdown already handles type singularization and field renames;
-  // this pass resolves display-name relations to slug paths and cleans Notion paths.
+  // Normalize in-memory before parsing: resolves display-name relations to slug
+  // paths and cleans Notion paths. The caller (importFromFile) may have already
+  // normalized and written back to disk; normalizeContent is idempotent so the
+  // second pass is a no-op.
+  let effectiveContent = content;
   if (opts.titleMap) {
-    const { fixed } = normalizeFrontmatter(parsed.frontmatter, slug + '.md', opts.titleMap);
-    Object.assign(parsed.frontmatter, fixed);
-
-    const bodyResult = normalizeBody(parsed.compiled_truth, slug + '.md', opts.titleMap);
-    if (bodyResult.issues.length > 0) {
-      (parsed as any).compiled_truth = bodyResult.fixed;
-    }
+    const { content: normalized, changed } = normalizeContent(content, slug + '.md', opts.titleMap);
+    if (changed) effectiveContent = normalized;
   }
+
+  const parsed = parseMarkdown(effectiveContent, slug + '.md');
 
   // Hash includes ALL fields for idempotency (not just compiled_truth + timeline)
   const hash = createHash('sha256')
@@ -167,7 +164,17 @@ export async function importFromFile(
     return { slug: relativePath, status: 'skipped', chunks: 0, error: `File too large (${stat.size} bytes)` };
   }
 
-  const content = readFileSync(filePath, 'utf-8');
+  let content = readFileSync(filePath, 'utf-8');
+
+  // Normalize and write back to disk so the file (source of truth) matches the DB.
+  if (opts.titleMap) {
+    const { content: normalized, changed } = normalizeContent(content, relativePath, opts.titleMap);
+    if (changed) {
+      writeFileSync(filePath, normalized, 'utf-8');
+      content = normalized;
+    }
+  }
+
   const parsed = parseMarkdown(content, relativePath);
 
   // Enforce path-authoritative slug. parseMarkdown prefers frontmatter.slug over
@@ -187,6 +194,7 @@ export async function importFromFile(
 
   // Pass the path-derived slug explicitly so that any future change to
   // parseMarkdown's precedence rules cannot re-introduce this bug.
+  // titleMap already applied above — importFromContent's normalize pass is a no-op.
   return importFromContent(engine, expectedSlug, content, opts);
 }
 

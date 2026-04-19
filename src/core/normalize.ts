@@ -4,7 +4,7 @@ import type { PageType } from './types.ts';
 export interface NormalizeIssue {
   file: string;
   line: number;
-  rule: 'plural-type' | 'field-rename' | 'display-name-relation' | 'notion-path' | 'notion-url';
+  rule: 'plural-type' | 'field-rename' | 'display-name-relation' | 'notion-path' | 'notion-url' | 'hr-separator';
   message: string;
   fixable: boolean;
 }
@@ -272,6 +272,18 @@ export function normalizeBody(
   let fixed = body;
   let pathCount = 0;
   let urlCount = 0;
+
+  // Replace standalone --- horizontal rules with *** to avoid collision with
+  // the four-zone page separator. Both are valid markdown HRs.
+  let hrCount = 0;
+  fixed = fixed.replace(/^---$/gm, () => { hrCount++; return '***'; });
+  if (hrCount > 0) {
+    issues.push({
+      file: filePath, line: 0, rule: 'hr-separator',
+      message: `${hrCount} horizontal rule(s) converted from --- to ***`,
+      fixable: true,
+    });
+  }
 
   fixed = fixed.replace(
     /\(\.\.\/[^)]+?[0-9a-f]{32}[^)]*\.md\)/g,

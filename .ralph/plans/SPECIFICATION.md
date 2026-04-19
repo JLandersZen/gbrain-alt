@@ -856,12 +856,32 @@ compatible.
 
 ### 5.4 Sync Behavior
 
+**Frontmatter layout compatibility.** The Notion export nests relation arrays
+under a `links:` parent key (332/368 imported pages use this). The spec convention
+is top-level keys. The relation extraction code must handle both:
+
+```yaml
+# Notion export layout (links: nesting):
+links:
+  assigned_projects: [projects/foo]
+  related_people: [people/bar]
+
+# Spec convention (top-level):
+assigned_projects: [projects/foo]
+related_people: [people/bar]
+```
+
+On sync/import, if a `links` key exists and its value is an object (not an array),
+flatten its children to top-level before extracting relations. This is a read-time
+concern — the canonical write format is top-level keys.
+
 `gbrain sync` performs three operations per changed file:
 
 1. **Parse frontmatter relations → update `links` table.** Any frontmatter key
    matching known relation patterns (`assigned_*`, `related_*`, `parent`,
    `organizations`, `people`, etc.) containing slug paths is upserted into the
-   `links` table with the appropriate `link_type`.
+   `links` table with the appropriate `link_type`. Values matching the Notion UUID
+   pattern (32-char hex suffix from URL-encoded paths) are skipped.
 
 2. **Regenerate relationships zone.** Read frontmatter relation arrays, resolve
    slug paths to page titles (from DB or frontmatter of target files), render as
@@ -904,6 +924,10 @@ If only one `---` is found and the page has relation frontmatter, the parser tre
 the split as compiled_truth/timeline (backwards compatible) and generates the
 relationships zone between them on next sync. If two `---` are found, the middle
 section is the relationships zone.
+
+**HR separator collision (resolved).** `normalizeBody()` converts standalone `---`
+horizontal rules to `***` during import to prevent collision with zone separators.
+Both are valid markdown HRs. Verified: 0 body `---` in 368 imported Notion pages.
 
 ## 6. What Does Not Change
 

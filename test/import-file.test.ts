@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
-import { writeFileSync, mkdirSync, rmSync, symlinkSync } from 'fs';
+import { writeFileSync, readFileSync, mkdirSync, rmSync, symlinkSync } from 'fs';
 import { join } from 'path';
 import { importFile, importFromContent } from '../src/core/import-file.ts';
 import { buildTitleMap } from '../src/core/normalize.ts';
@@ -485,6 +485,66 @@ Content.
     expect(putCall.args[1].type).toBe('task');
     // But display names are NOT resolved without a titleMap
     expect(putCall.args[1].frontmatter.assigned_projects).toBe('Some Display Name');
+  });
+
+  test('writes normalized content back to disk when titleMap is provided', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Agentic Infrastructure', slug: 'projects/agentic-infrastructure' },
+      { title: 'Joe Landers', slug: 'people/joe-landers' },
+    ]);
+
+    const filePath = join(TMP, 'writeback.md');
+    const original = `---
+type: tasks
+title: Writeback Test
+assigned_projects: Agentic Infrastructure
+related_people: Joe Landers
+---
+
+Link to [Agentic Infrastructure](../Projects/Agentic%20Infrastructure%20abc12345def67890abc12345def67890.md).
+`;
+    writeFileSync(filePath, original);
+
+    const engine = mockEngine();
+    const result = await importFile(engine, filePath, 'tasks/writeback.md', {
+      noEmbed: true, titleMap,
+    });
+
+    expect(result.status).toBe('imported');
+
+    const ondisk = readFileSync(filePath, 'utf-8');
+    expect(ondisk).not.toBe(original);
+    expect(ondisk).toContain('assigned_projects');
+    expect(ondisk).toContain('projects/agentic-infrastructure');
+    expect(ondisk).toContain('people/joe-landers');
+    expect(ondisk).not.toContain('abc12345def67890');
+  });
+
+  test('does not rewrite file when no normalization needed', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Already Clean', slug: 'projects/already-clean' },
+    ]);
+
+    const filePath = join(TMP, 'already-clean.md');
+    const clean = `---
+type: task
+title: Already Clean Task
+assigned_projects:
+  - projects/already-clean
+---
+
+No normalization needed.
+`;
+    writeFileSync(filePath, clean);
+    const { mtimeMs: before } = Bun.file(filePath);
+
+    const engine = mockEngine();
+    await importFile(engine, filePath, 'tasks/already-clean.md', {
+      noEmbed: true, titleMap,
+    });
+
+    const ondisk = readFileSync(filePath, 'utf-8');
+    expect(ondisk).toBe(clean);
   });
 
   test('normalizes _events field rename during import with titleMap', async () => {
