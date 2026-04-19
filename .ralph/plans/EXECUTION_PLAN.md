@@ -199,7 +199,7 @@ to `type: resource` in Slice 1b, making the correct count 6. Fixed and verified.
 - Two worktrees can each have independent databases
 - `bun test` passes (600 tests, 0 failures)
 
-### Slice 2b — Notion Import (second attempt) ⬅ NEXT
+### Slice 2b — Notion Import (second attempt) ✅ DONE (ran by user)
 
 **Depends on:** Slice 2a (local-first config) ✅
 
