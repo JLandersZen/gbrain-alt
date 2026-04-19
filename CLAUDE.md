@@ -26,7 +26,7 @@ markdown files (tool-agnostic, work with both CLI and plugin contexts).
 - `src/core/db.ts` — Connection management, schema initialization
 - `src/commands/migrate-engine.ts` — Bidirectional engine migration (`gbrain migrate --to supabase/pglite`)
 - `src/core/import-file.ts` — importFromFile + importFromContent (chunk + embed + tags + links)
-- `src/core/relations.ts` — Frontmatter → links table extraction. Handles `links:` nesting from Notion, Notion UUID filtering, type-aware parent links. Called by `importFromContent()`.
+- `src/core/relations.ts` — Frontmatter → links table extraction + reverse-link reconstruction. Handles `links:` nesting from Notion, Notion UUID filtering, type-aware parent links, `reconstructReverseLinks()` for one-sided import fixup. Called by `importFromContent()` and `runImport()` post-pass.
 - `src/core/sync.ts` — Pure sync functions (manifest parsing, filtering, slug conversion)
 - `src/core/storage.ts` — Pluggable storage interface (S3, Supabase Storage, local)
 - `src/core/supabase-admin.ts` — Supabase admin API (project discovery, pgvector check)

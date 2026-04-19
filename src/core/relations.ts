@@ -124,6 +124,141 @@ export async function syncPageLinks(
   return { added, removed };
 }
 
+// Reverse link mapping: forward_field → { sourceDir → reverseField on target }
+// §4.3 derived fields + §2.7 bidirectional relationships
+const REVERSE_MAP: Record<string, Record<string, string>> = {
+  assigned_projects: { tasks: 'tasks' },
+  assigned_aors: { projects: 'projects' },
+  assigned_contexts: {
+    aors: 'aors',
+    projects: 'projects',
+    tasks: 'tasks',
+    events: 'events',
+  },
+  related_people: {
+    tasks: 'related_tasks',
+    events: 'related_events',
+    resources: 'related_resources',
+    projects: 'related_projects',
+    interests: 'related_interests',
+  },
+  related_tasks: {
+    events: 'related_events',
+    resources: 'related_resources',
+    people: 'related_people',
+  },
+  related_events: {
+    tasks: 'related_tasks',
+    resources: 'related_resources',
+    people: 'related_people',
+    projects: 'related_projects',
+  },
+  related_resources: {
+    tasks: 'related_tasks',
+    events: 'related_events',
+    people: 'related_people',
+    projects: 'related_projects',
+    interests: 'related_interests',
+  },
+  related_interests: {
+    resources: 'related_resources',
+    people: 'related_people',
+    events: 'related_events',
+  },
+  related_projects: {
+    people: 'related_people',
+  },
+  delegate: { tasks: 'delegated_tasks', projects: 'delegated_projects' },
+  organizations: { people: 'people' },
+  people: { organizations: 'organizations' },
+  supers: { people: 'subs' },
+};
+
+const PARENT_REVERSE: Record<string, string> = {
+  organizations: 'children',
+};
+
+export interface ReverseChange {
+  slug: string;
+  patches: Record<string, string[]>;
+}
+
+export function reconstructReverseLinks(
+  pages: { slug: string; frontmatter: Record<string, unknown> }[],
+): ReverseChange[] {
+  const reverseIndex = new Map<string, { field: string; slug: string }[]>();
+
+  function addReverse(targetSlug: string, field: string, sourceSlug: string) {
+    if (targetSlug === sourceSlug) return;
+    if (!reverseIndex.has(targetSlug)) reverseIndex.set(targetSlug, []);
+    reverseIndex.get(targetSlug)!.push({ field, slug: sourceSlug });
+  }
+
+  for (const page of pages) {
+    const fm = flattenLinksNesting(page.frontmatter);
+    const sourceDir = page.slug.split('/')[0];
+
+    for (const [forwardField, dirMap] of Object.entries(REVERSE_MAP)) {
+      if (!(forwardField in fm)) continue;
+      const reverseField = dirMap[sourceDir];
+      if (!reverseField) continue;
+
+      const slugs = extractSlugs(fm[forwardField]);
+      for (const targetSlug of slugs) {
+        if (isNotionUuidPath(targetSlug)) continue;
+        addReverse(targetSlug, reverseField, page.slug);
+      }
+    }
+
+    if ('parent' in fm) {
+      const reverseField = PARENT_REVERSE[sourceDir];
+      if (reverseField) {
+        const parentSlugs = extractSlugs(fm.parent);
+        for (const targetSlug of parentSlugs) {
+          if (isNotionUuidPath(targetSlug)) continue;
+          addReverse(targetSlug, reverseField, page.slug);
+        }
+      }
+    }
+  }
+
+  const pageMap = new Map(pages.map(p => [p.slug, p.frontmatter]));
+  const changes: ReverseChange[] = [];
+
+  for (const [targetSlug, entries] of reverseIndex) {
+    const targetFm = pageMap.get(targetSlug);
+    if (!targetFm) continue;
+
+    const flatFm = flattenLinksNesting(targetFm);
+    const byField = new Map<string, Set<string>>();
+    for (const { field, slug } of entries) {
+      if (!byField.has(field)) byField.set(field, new Set());
+      byField.get(field)!.add(slug);
+    }
+
+    const patches: Record<string, string[]> = {};
+    let changed = false;
+
+    for (const [field, sourceSlugs] of byField) {
+      const existing = new Set(extractSlugs(flatFm[field]));
+      const toAdd: string[] = [];
+      for (const slug of sourceSlugs) {
+        if (!existing.has(slug)) toAdd.push(slug);
+      }
+      if (toAdd.length > 0) {
+        patches[field] = [...existing, ...toAdd].sort();
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      changes.push({ slug: targetSlug, patches });
+    }
+  }
+
+  return changes;
+}
+
 const DISPLAY_LABELS: Record<string, string> = {
   assigned_projects: 'Assigned Projects',
   assigned_aors: 'Assigned AORs',
@@ -143,6 +278,11 @@ const DISPLAY_LABELS: Record<string, string> = {
   delegated_tasks: 'Delegated Tasks',
   delegated_projects: 'Delegated Projects',
   parent: 'Parent',
+  tasks: 'Tasks',
+  projects: 'Projects',
+  aors: 'AORs',
+  events: 'Events',
+  children: 'Children',
 };
 
 const RELATION_FIELDS_ORDER = [
@@ -164,6 +304,11 @@ const RELATION_FIELDS_ORDER = [
   'subs',
   'delegated_tasks',
   'delegated_projects',
+  'tasks',
+  'projects',
+  'aors',
+  'events',
+  'children',
 ];
 
 function slugToTitle(slug: string, titleMap?: TitleMap): string {

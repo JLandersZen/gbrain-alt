@@ -7,6 +7,8 @@ import type { BrainEngine } from '../core/engine.ts';
 import { importFile } from '../core/import-file.ts';
 import { loadConfig, configDir } from '../core/config.ts';
 import { buildTitleMap, type TitleMap } from '../core/normalize.ts';
+import { reconstructReverseLinks, renderRelationshipsZone } from '../core/relations.ts';
+import { parseMarkdown, serializeMarkdown } from '../core/markdown.ts';
 
 function defaultWorkers(): number {
   const cpuCount = cpus().length;
@@ -176,6 +178,73 @@ export async function runImport(engine: BrainEngine, args: string[]) {
     // Sequential: use the provided engine
     for (const filePath of files) {
       await processFile(engine, filePath);
+    }
+  }
+
+  // ── Reverse-link reconstruction ──
+  // After all pages are imported, reconstruct missing reverse relations.
+  // E.g., if Task A has assigned_projects: [projects/x], Project X gets tasks: [tasks/a].
+  if (imported > 0 || errors === 0) {
+    const allPages: { slug: string; frontmatter: Record<string, unknown> }[] = [];
+    for (const f of allFiles) {
+      try {
+        const raw = readFileSync(f, 'utf-8');
+        const { data } = matter(raw);
+        const rel = relative(dir, f);
+        const slug = rel.replace(/\.md$/, '');
+        allPages.push({ slug, frontmatter: data });
+      } catch { /* skip unreadable */ }
+    }
+
+    const changes = reconstructReverseLinks(allPages);
+    if (changes.length > 0) {
+      console.log(`\nReconstructing reverse links: ${changes.length} pages to patch`);
+      const slugToPath = new Map<string, string>();
+      for (const f of allFiles) {
+        const rel = relative(dir, f);
+        const slug = rel.replace(/\.md$/, '');
+        slugToPath.set(slug, f);
+      }
+
+      let patched = 0;
+      for (const change of changes) {
+        const filePath = slugToPath.get(change.slug);
+        if (!filePath) continue;
+
+        try {
+          const raw = readFileSync(filePath, 'utf-8');
+          const parsed = parseMarkdown(raw, relative(dir, filePath));
+
+          // Apply patches to frontmatter
+          const updatedFm = { ...parsed.frontmatter };
+          for (const [field, values] of Object.entries(change.patches)) {
+            updatedFm[field] = values;
+          }
+
+          // Regenerate relationships zone with patched frontmatter
+          const zone = renderRelationshipsZone(
+            { ...updatedFm, type: parsed.type, title: parsed.title },
+            titleMap,
+          );
+
+          const updated = serializeMarkdown(
+            updatedFm,
+            parsed.compiled_truth,
+            parsed.timeline,
+            { type: parsed.type, title: parsed.title, tags: parsed.tags, relationships: zone },
+          );
+
+          writeFileSync(filePath, updated, 'utf-8');
+
+          // Re-import the patched file so the DB reflects the changes
+          await importFile(engine, filePath, relative(dir, filePath), { noEmbed, titleMap });
+          patched++;
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error(`  Warning: reverse-link patch failed for ${change.slug}: ${msg}`);
+        }
+      }
+      console.log(`  ${patched} pages patched with reverse links`);
     }
   }
 

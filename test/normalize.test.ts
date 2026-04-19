@@ -268,26 +268,11 @@ describe('normalizeBody', () => {
     expect(issues).toHaveLength(0);
   });
 
-  test('converts standalone --- horizontal rules to ***', () => {
-    const body = 'Section one\n---\nSection two\n---\nSection three';
+  test('preserves standalone --- horizontal rules (zone separators)', () => {
+    const body = 'Compiled truth\n---\n## Relationships\n- **Parent:** [Foo](aors/foo.md)\n---\n- 2026-04-18: Created';
     const { fixed, issues } = normalizeBody(body, 'resources/foo.md', titleMap);
-    expect(fixed).toBe('Section one\n***\nSection two\n***\nSection three');
-    expect(issues.some(i => i.rule === 'hr-separator')).toBe(true);
-    expect(issues.find(i => i.rule === 'hr-separator')!.message).toContain('2 horizontal rule');
-  });
-
-  test('leaves --- with surrounding content on same line alone', () => {
-    const body = 'text --- more text';
-    const { fixed, issues } = normalizeBody(body, 'resources/foo.md', titleMap);
-    expect(fixed).toBe('text --- more text');
+    expect(fixed).toBe(body);
     expect(issues.filter(i => i.rule === 'hr-separator')).toHaveLength(0);
-  });
-
-  test('converts single --- horizontal rule', () => {
-    const body = 'Above\n---\nBelow';
-    const { fixed, issues } = normalizeBody(body, 'tasks/foo.md', titleMap);
-    expect(fixed).toBe('Above\n***\nBelow');
-    expect(issues.some(i => i.rule === 'hr-separator')).toBe(true);
   });
 });
 

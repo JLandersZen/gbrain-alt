@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { extractRelations, flattenLinksNesting, renderRelationshipsZone } from '../src/core/relations.ts';
+import { extractRelations, flattenLinksNesting, renderRelationshipsZone, reconstructReverseLinks } from '../src/core/relations.ts';
 import { buildTitleMap } from '../src/core/normalize.ts';
 
 describe('flattenLinksNesting', () => {
@@ -363,5 +363,241 @@ describe('renderRelationshipsZone', () => {
     const zone = renderRelationshipsZone(fm);
     expect(zone).toContain('## Relationships');
     expect(zone.split('\n').filter(l => l.startsWith('- **')).length).toBe(5);
+  });
+
+  test('renders reverse-link fields (tasks, projects, aors, events, children)', () => {
+    const fm = {
+      tasks: ['tasks/build-widget', 'tasks/deploy-widget'],
+      projects: ['projects/alpha'],
+      children: ['organizations/child-corp'],
+    };
+    const result = renderRelationshipsZone(fm);
+    expect(result).toContain('- **Tasks:**');
+    expect(result).toContain('[Build Widget](tasks/build-widget.md)');
+    expect(result).toContain('[Deploy Widget](tasks/deploy-widget.md)');
+    expect(result).toContain('- **Projects:**');
+    expect(result).toContain('- **Children:**');
+  });
+});
+
+describe('reconstructReverseLinks', () => {
+  test('adds tasks to project when task has assigned_projects', () => {
+    const pages = [
+      { slug: 'tasks/build-widget', frontmatter: { assigned_projects: ['projects/alpha'] } },
+      { slug: 'projects/alpha', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].slug).toBe('projects/alpha');
+    expect(changes[0].patches.tasks).toContain('tasks/build-widget');
+  });
+
+  test('adds projects to aor when project has assigned_aors', () => {
+    const pages = [
+      { slug: 'projects/gbrain', frontmatter: { assigned_aors: ['aors/engineering'] } },
+      { slug: 'aors/engineering', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].slug).toBe('aors/engineering');
+    expect(changes[0].patches.projects).toContain('projects/gbrain');
+  });
+
+  test('adds aors/projects/tasks/events to context when entities have assigned_contexts', () => {
+    const pages = [
+      { slug: 'aors/engineering', frontmatter: { assigned_contexts: ['contexts/at-work'] } },
+      { slug: 'projects/alpha', frontmatter: { assigned_contexts: ['contexts/at-work'] } },
+      { slug: 'tasks/build', frontmatter: { assigned_contexts: ['contexts/at-work'] } },
+      { slug: 'events/standup', frontmatter: { assigned_contexts: ['contexts/at-work'] } },
+      { slug: 'contexts/at-work', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    const patch = changes[0];
+    expect(patch.slug).toBe('contexts/at-work');
+    expect(patch.patches.aors).toContain('aors/engineering');
+    expect(patch.patches.projects).toContain('projects/alpha');
+    expect(patch.patches.tasks).toContain('tasks/build');
+    expect(patch.patches.events).toContain('events/standup');
+  });
+
+  test('adds related_tasks to person when task has related_people', () => {
+    const pages = [
+      { slug: 'tasks/review', frontmatter: { related_people: ['people/alice'] } },
+      { slug: 'people/alice', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].slug).toBe('people/alice');
+    expect(changes[0].patches.related_tasks).toContain('tasks/review');
+  });
+
+  test('adds delegated_tasks to person when task has delegate', () => {
+    const pages = [
+      { slug: 'tasks/deploy', frontmatter: { delegate: 'people/bob' } },
+      { slug: 'people/bob', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].slug).toBe('people/bob');
+    expect(changes[0].patches.delegated_tasks).toContain('tasks/deploy');
+  });
+
+  test('adds subs to person when person has supers', () => {
+    const pages = [
+      { slug: 'people/junior', frontmatter: { supers: ['people/senior'] } },
+      { slug: 'people/senior', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].slug).toBe('people/senior');
+    expect(changes[0].patches.subs).toContain('people/junior');
+  });
+
+  test('adds children to org when child org has parent', () => {
+    const pages = [
+      { slug: 'organizations/child-corp', frontmatter: { parent: 'organizations/parent-corp' } },
+      { slug: 'organizations/parent-corp', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].slug).toBe('organizations/parent-corp');
+    expect(changes[0].patches.children).toContain('organizations/child-corp');
+  });
+
+  test('adds people to org when person has organizations', () => {
+    const pages = [
+      { slug: 'people/alice', frontmatter: { organizations: ['organizations/acme'] } },
+      { slug: 'organizations/acme', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].slug).toBe('organizations/acme');
+    expect(changes[0].patches.people).toContain('people/alice');
+  });
+
+  test('is idempotent — no changes when reverse already exists', () => {
+    const pages = [
+      { slug: 'tasks/build-widget', frontmatter: { assigned_projects: ['projects/alpha'] } },
+      { slug: 'projects/alpha', frontmatter: { tasks: ['tasks/build-widget'] } },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(0);
+  });
+
+  test('preserves existing reverse values and adds new ones', () => {
+    const pages = [
+      { slug: 'tasks/build-a', frontmatter: { assigned_projects: ['projects/alpha'] } },
+      { slug: 'tasks/build-b', frontmatter: { assigned_projects: ['projects/alpha'] } },
+      { slug: 'projects/alpha', frontmatter: { tasks: ['tasks/build-a'] } },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].patches.tasks).toContain('tasks/build-a');
+    expect(changes[0].patches.tasks).toContain('tasks/build-b');
+  });
+
+  test('returns empty when no forward relations exist', () => {
+    const pages = [
+      { slug: 'resources/readme', frontmatter: { status: 'done' } },
+      { slug: 'resources/guide', frontmatter: { status: 'draft' } },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(0);
+  });
+
+  test('skips targets not in the page set', () => {
+    const pages = [
+      { slug: 'tasks/orphan', frontmatter: { assigned_projects: ['projects/missing'] } },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(0);
+  });
+
+  test('handles links: nesting from Notion export', () => {
+    const pages = [
+      {
+        slug: 'tasks/nested',
+        frontmatter: { links: { assigned_projects: ['projects/alpha'] } },
+      },
+      { slug: 'projects/alpha', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].patches.tasks).toContain('tasks/nested');
+  });
+
+  test('skips Notion UUID paths', () => {
+    const pages = [
+      {
+        slug: 'tasks/uuid-task',
+        frontmatter: {
+          assigned_projects: [
+            'projects/valid',
+            'nat-instance-migration-network-9908-projectsnat20instance20abc12345def67890abc12345def67890',
+          ],
+        },
+      },
+      { slug: 'projects/valid', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].patches.tasks).toEqual(['tasks/uuid-task']);
+  });
+
+  test('does not add self-references', () => {
+    const pages = [
+      { slug: 'people/alice', frontmatter: { related_people: ['people/alice'] } },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(0);
+  });
+
+  test('handles multiple reverse fields on the same target', () => {
+    const pages = [
+      {
+        slug: 'tasks/complex',
+        frontmatter: {
+          assigned_projects: ['projects/alpha'],
+          related_people: ['people/alice'],
+          assigned_contexts: ['contexts/work'],
+        },
+      },
+      { slug: 'projects/alpha', frontmatter: {} },
+      { slug: 'people/alice', frontmatter: {} },
+      { slug: 'contexts/work', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(3);
+
+    const projectChange = changes.find(c => c.slug === 'projects/alpha');
+    expect(projectChange?.patches.tasks).toContain('tasks/complex');
+
+    const personChange = changes.find(c => c.slug === 'people/alice');
+    expect(personChange?.patches.related_tasks).toContain('tasks/complex');
+
+    const contextChange = changes.find(c => c.slug === 'contexts/work');
+    expect(contextChange?.patches.tasks).toContain('tasks/complex');
+  });
+
+  test('sorts output arrays for deterministic results', () => {
+    const pages = [
+      { slug: 'tasks/z-task', frontmatter: { assigned_projects: ['projects/alpha'] } },
+      { slug: 'tasks/a-task', frontmatter: { assigned_projects: ['projects/alpha'] } },
+      { slug: 'projects/alpha', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes[0].patches.tasks).toEqual(['tasks/a-task', 'tasks/z-task']);
+  });
+
+  test('bidirectional: organizations ↔ people', () => {
+    const pages = [
+      { slug: 'organizations/acme', frontmatter: { people: ['people/alice'] } },
+      { slug: 'people/alice', frontmatter: {} },
+    ];
+    const changes = reconstructReverseLinks(pages);
+    expect(changes).toHaveLength(1);
+    expect(changes[0].slug).toBe('people/alice');
+    expect(changes[0].patches.organizations).toContain('organizations/acme');
   });
 });

@@ -387,6 +387,7 @@ pre-scan) or derived from slug. Zone placed between two `---` separators.
 - `renderRelationshipsZone()` lives in `relations.ts` (keeps all relation logic co-located).
 - Title resolution order: `TitleMap.bySlug` → slug-derived title (capitalize hyphen-separated words).
 - Relationships zone only written during `importFromFile` (file path available), not `importFromContent` (in-memory, no file to write back to).
+- Zone generation runs *before* `importFromContent()`, not after. This ensures: (a) already-imported pages still get their zone written, (b) the content hash includes the zone, so the DB stays in sync with the file. Bug fix in `50a75c4`.
 - Zone comparison uses trimmed content to avoid whitespace-only rewrites.
 - Field rendering follows a stable order (parent first, then assigned, then related, then delegation/hierarchy).
 
@@ -396,24 +397,34 @@ pre-scan) or derived from slug. Zone placed between two `---` separators.
 - Import writes back to file, git diff shows the generated zone ✅
 - `bun test` passes (716 tests, 0 failures) ✅
 
-### Slice 3d — Reverse-Link Reconstruction
+### Slice 3d — Reverse-Link Reconstruction ✅ DONE
+
+**Completed:** 2026-04-18. All 733 tests pass (17 new reconstructReverseLinks tests + 1 new renderRelationshipsZone test). Beads: `gbrain-alt-bwt`.
 
 **Goal:** Post-import pass that reconstructs missing reverse relations. If Task A
 has `assigned_projects: [projects/x]`, then Project X gets `tasks: [tasks/a]` added
 to its frontmatter.
 
-**Files changed:**
+**Solution implemented:**
 
 | File | Change |
 |------|--------|
-| `src/core/relations.ts` (or similar) | `reconstructReverseLinks()` — iterate pages, build reverse index, patch frontmatter |
-| `src/commands/sync.ts` or `src/commands/import.ts` | Call reverse-link reconstruction after import |
-| `test/` (new or existing) | Tests: one-sided relation → both sides populated |
+| `src/core/relations.ts` | Added `REVERSE_MAP` (8 forward→reverse field mappings across all 9 entity types), `PARENT_REVERSE` (org children), `reconstructReverseLinks()` function, `ReverseChange` interface. Extended `DISPLAY_LABELS` and `RELATION_FIELDS_ORDER` with reverse-link fields (`tasks`, `projects`, `aors`, `events`, `children`). |
+| `src/commands/import.ts` | Post-import reverse-link pass: reads all page frontmatters, calls `reconstructReverseLinks()`, patches target files on disk (frontmatter + regenerated relationships zone), re-imports changed pages so DB reflects patches. |
+| `test/relations.test.ts` | 18 new tests: all forward→reverse mappings (assigned_projects→tasks, assigned_aors→projects, assigned_contexts→{aors,projects,tasks,events}, related_people→related_tasks, delegate→delegated_tasks, supers→subs, parent→children, organizations↔people), idempotency, existing value preservation, empty/missing targets, Notion UUID skip, self-reference skip, multi-field patches, sorted output, links: nesting, rendering of reverse-link fields. |
 
-**Acceptance:**
-- Import one-sided Notion data → both sides have relations in frontmatter
-- Reverse reconstruction is idempotent (running twice doesn't duplicate)
-- `bun test` passes
+**Design decisions:**
+- `reconstructReverseLinks()` is a pure function: takes pages in, returns patches out. No I/O, no DB calls. Import command orchestrates reading files, applying patches, and re-importing.
+- The function does NOT add reverse-link entries that already exist (idempotent). Running twice produces zero changes.
+- Reverse values are sorted alphabetically for deterministic file output.
+- Self-references are filtered out (page can't be its own reverse link).
+- The `REVERSE_MAP` table is source-directory-aware: `related_people` from `tasks/` maps to `related_tasks` on the person, but from `events/` maps to `related_events`. This matches spec §2.7 bidirectional relationships.
+- `PARENT_REVERSE` only covers organizations→children (the only parent type that has a named reverse per spec §4.3). Other parent types don't have derived reverse fields.
+
+**Acceptance:** ✅
+- Import one-sided Notion data → both sides have relations in frontmatter ✅
+- Reverse reconstruction is idempotent (running twice doesn't duplicate) ✅
+- `bun test` passes (733 tests, 0 failures) ✅
 
 ### Slice 3e — Documentation + E2E Validation
 
@@ -465,9 +476,9 @@ Slice 3b      ─── Frontmatter → links table ─────────�
   │
 Slice 3c      ─── Relationships zone generation ─────── ✅
   │
-Slice 3d      ─── Reverse-link reconstruction ───────── ⬅ NEXT
+Slice 3d      ─── Reverse-link reconstruction ───────── ✅
   │
-Slice 3e      ─── Documentation + E2E validation ───── 
+Slice 3e      ─── Documentation + E2E validation ───── ⬅ NEXT
 ```
 
 Each step leaves the codebase green. Each commit is independently useful.
@@ -486,10 +497,11 @@ Phase 2 validated Phase 1. Phase 3 fixes gaps discovered during Phase 2.
 | PGLite single-writer lock contention | **Active** | Don't run concurrent gbrain commands. Future: add warning or queue. |
 | `gbrain list` caps at 50, `-n` flag ignored | **Active** | Needs tool fix in gbrain-alt. Not yet filed as separate issue. |
 | Global config/DB prevents per-project isolation | ✅ Resolved | Local-first config (Slice 2a) implemented. Walk-up discovery + `--global` flag. |
-| Notion exports one-sided relations | ✅ Designed | Reverse-link reconstruction post-pass (Slice 3d). Not Notion-specific. |
-| Relations not navigable in markdown viewers | ✅ Designed | Four-zone structure with generated relationships zone (Slice 3c). |
+| Notion exports one-sided relations | ✅ Resolved (3d) | `reconstructReverseLinks()` post-import pass. 8 forward→reverse mappings across all entity types. Idempotent. |
+| Relations not navigable in markdown viewers | ✅ Resolved (3c) | `renderRelationshipsZone()` generates `## Relationships` with clickable markdown links. Validated on 368 Notion pages. |
+| `--fresh` flag only clears checkpoint, not hash skip | **Active** | `--fresh` skips checkpoint resume but does NOT bypass content hash idempotency. Misleading name. Low priority — zone generation before import sidesteps this. |
 | Sync writes back to user files (new behavior) | **Active** | Users must understand relationships zone is generated. Git diff shows changes. |
-| Pages with literal `---` in compiled truth | ✅ Resolved | `normalizeBody()` converts `---` HRs to `***` during import. Verified: 0 body `---` in 368 imported pages. |
+| Pages with literal `---` in compiled truth | ✅ Resolved | HR conversion moved out of import pipeline into migrate skill guidance. Import pipeline preserves `---` zone separators. |
 | Notion migrate produces plural type values | ✅ Resolved (3b-pre) | `parseMarkdown()` singularizes via `normalizeType()` on every parse. |
 | Relations store display names not slug paths | ✅ Resolved (3b-pre) | `runImport()` pre-scans titles, `importFromContent()` resolves via `titleMap`. |
 | `_events` field uses wrong name | ✅ Resolved (3b-pre) | `parseMarkdown()` renames via `FIELD_RENAMES` map. |

@@ -59,7 +59,12 @@ Obsidian-specific:
 1. Export from Notion: Settings > Export > Markdown & CSV
 2. Notion exports nested directories with UUIDs in filenames
 3. Strip UUIDs from filenames for clean slugs
-4. **Watch for truncated titles.** Notion truncates long page titles in export
+4. **Convert `---` horizontal rules to `***` in the exported files before
+   importing.** Notion exports use `---` as HRs, but GBrain uses `---` as
+   the zone separator (compiled truth / relationships / timeline). Run a
+   find-and-replace across the export directory before `gbrain import`:
+   `find <export-dir> -name '*.md' -exec sed -i '' 's/^---$/***/' {} +`
+5. **Watch for truncated titles.** Notion truncates long page titles in export
    filenames and CSV columns. When building relations between pages, resolve
    by matching against the full title from the page content, not the filename.
    If a relation reference doesn't resolve, search for partial matches before
