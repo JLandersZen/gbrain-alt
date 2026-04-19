@@ -1,11 +1,40 @@
-import { readFileSync, writeFileSync, mkdirSync, chmodSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'fs';
+import { join, dirname, resolve } from 'path';
 import { homedir } from 'os';
 import type { EngineConfig } from './types.ts';
 
-// Lazy-evaluated to avoid calling homedir() at module scope (breaks in serverless/bundled environments)
-function getConfigDir() { return join(homedir(), '.gbrain'); }
-function getConfigPath() { return join(getConfigDir(), 'config.json'); }
+let _resolvedConfigDir: string | null = null;
+
+function discoverConfigDir(startDir?: string): string {
+  const home = homedir();
+  const globalDir = join(home, '.gbrain');
+  let current = resolve(startDir || process.cwd());
+
+  while (true) {
+    const candidate = join(current, '.gbrain', 'config.json');
+    if (existsSync(candidate)) {
+      return join(current, '.gbrain');
+    }
+
+    const parent = dirname(current);
+    if (parent === current) break;
+    if (current === home) break;
+    current = parent;
+  }
+
+  return globalDir;
+}
+
+function getConfigDir(): string {
+  if (!_resolvedConfigDir) {
+    _resolvedConfigDir = discoverConfigDir();
+  }
+  return _resolvedConfigDir;
+}
+
+function getConfigPath(): string {
+  return join(getConfigDir(), 'config.json');
+}
 
 export interface GBrainConfig {
   engine: 'postgres' | 'pglite';
@@ -17,7 +46,7 @@ export interface GBrainConfig {
 
 /**
  * Load config with credential precedence: env vars > config file.
- * Plugin config is handled by the plugin runtime injecting env vars.
+ * Walks up from cwd looking for .gbrain/config.json, falls back to ~/.gbrain/.
  */
 export function loadConfig(): GBrainConfig | null {
   let fileConfig: GBrainConfig | null = null;
@@ -46,10 +75,12 @@ export function loadConfig(): GBrainConfig | null {
 }
 
 export function saveConfig(config: GBrainConfig): void {
-  mkdirSync(getConfigDir(), { recursive: true });
-  writeFileSync(getConfigPath(), JSON.stringify(config, null, 2) + '\n', { mode: 0o600 });
+  const dir = getConfigDir();
+  mkdirSync(dir, { recursive: true });
+  const path = getConfigPath();
+  writeFileSync(path, JSON.stringify(config, null, 2) + '\n', { mode: 0o600 });
   try {
-    chmodSync(getConfigPath(), 0o600);
+    chmodSync(path, 0o600);
   } catch {
     // chmod may fail on some platforms
   }
@@ -64,9 +95,21 @@ export function toEngineConfig(config: GBrainConfig): EngineConfig {
 }
 
 export function configDir(): string {
-  return join(homedir(), '.gbrain');
+  return getConfigDir();
 }
 
 export function configPath(): string {
   return join(configDir(), 'config.json');
+}
+
+export function globalConfigDir(): string {
+  return join(homedir(), '.gbrain');
+}
+
+export function setConfigDir(dir: string): void {
+  _resolvedConfigDir = dir;
+}
+
+export function resetConfigDir(): void {
+  _resolvedConfigDir = null;
 }

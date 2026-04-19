@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { VERSION } from '../version.ts';
+import { globalConfigDir } from '../core/config.ts';
 
 export async function runUpgrade(args: string[]) {
   if (args.includes('--help') || args.includes('-h')) {
@@ -86,7 +87,7 @@ function verifyUpgrade(): string {
 
 function saveUpgradeState(oldVersion: string, newVersion: string) {
   try {
-    const dir = join(process.env.HOME || '', '.gbrain');
+    const dir = globalConfigDir();
     mkdirSync(dir, { recursive: true });
     const statePath = join(dir, 'upgrade-state.json');
     const state: Record<string, unknown> = existsSync(statePath)
@@ -132,7 +133,7 @@ export async function runPostUpgrade(args: string[] = []): Promise<void> {
   }
   // Cosmetic: print feature pitches for migrations newer than the prior binary.
   try {
-    const statePath = join(process.env.HOME || '', '.gbrain', 'upgrade-state.json');
+    const statePath = join(globalConfigDir(), 'upgrade-state.json');
     if (existsSync(statePath)) {
       const state = JSON.parse(readFileSync(statePath, 'utf-8'));
       const from = state?.last_upgrade?.from;
