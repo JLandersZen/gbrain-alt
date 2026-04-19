@@ -552,6 +552,9 @@ third sync is up_to_date).
 - [x] Updated docs/README.md — guide count 23 → 24
 - [x] Documentation: import normalization pipeline guide (docs/guides/import-normalization.md)
 - [x] Documentation: sync --subdir monorepo guide (docs/guides/monorepo-sync.md)
+- [x] Documentation: relations pipeline guide (docs/guides/relations-pipeline.md) — frontmatter fields, link types, sync behavior, reverse links, graph traversal, coexistence with auto-link
+- [x] Updated guides README — added relations-pipeline guide link, guide count now 28
+- [x] Updated docs/README.md — guide count 26 → 28
 - [ ] Branch swap (force-push to `internal-adaptation`) — deferred, awaiting user confirmation
 - [ ] `internal-adaptation-backup` retained (safety net until confirmed stable)
 
@@ -570,7 +573,7 @@ third sync is up_to_date).
 | 5 | Four-zone parser (sentinel rewrite) | **HIGH** | **DONE** (094d9a4) |
 | 6 | Normalize + relations pipeline | Medium | **DONE** (9e6ee18) |
 | 7 | Sync --subdir + final commits | Medium | **DONE** (48120ba) |
-| 8 | Validation + branch swap + push | Low | **IN PROGRESS** — validation done, 2 bugs fixed, branch swap pending user OK |
+| 8 | Validation + branch swap + push | Low | **NEARLY DONE** — validation passed, bugs fixed, docs written, pushed. Only branch swap remains (destructive, needs user OK) |
 
 **Total: ~10–14 days (2 sprints)**
 

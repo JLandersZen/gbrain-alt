@@ -9,6 +9,7 @@ Standalone guides broken out from the GBrain Skillpack. Each covers one pattern 
 - [Brain vs Memory](brain-vs-memory.md) -- When to store info in GBrain vs agent memory vs session context
 - [Four-Zone Page Structure](compiled-truth.md) -- Compiled truth + relationships + timeline with sentinel markers
 - [Page Types](page-types.md) -- The 9-type PARA+GTD taxonomy: context, aor, project, task, event, resource, interest, person, organization
+- [Relations Pipeline](relations-pipeline.md) -- Frontmatter relations to typed links, relationships zone, reverse links, graph traversal
 - [Entity Detection](entity-detection.md) -- Auto-scanning every message for entities and original thinking
 - [Source Attribution](source-attribution.md) -- Tracing every brain fact to who said it, when, and in what context
 
