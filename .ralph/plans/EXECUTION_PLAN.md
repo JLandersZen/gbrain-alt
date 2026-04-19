@@ -550,8 +550,8 @@ third sync is up_to_date).
 - [x] Documentation: PARA+GTD taxonomy guide (docs/guides/page-types.md) — 9 types, inference rules, disambiguation, relation fields, database column behavior
 - [x] Updated guides README — fixed stale "Two-zone" description, added page-types guide link
 - [x] Updated docs/README.md — guide count 23 → 24
-- [ ] Documentation: import normalization pipeline guide — deferred to next session
-- [ ] Documentation: sync --subdir monorepo guide — deferred to next session
+- [x] Documentation: import normalization pipeline guide (docs/guides/import-normalization.md)
+- [x] Documentation: sync --subdir monorepo guide (docs/guides/monorepo-sync.md)
 - [ ] Branch swap (force-push to `internal-adaptation`) — deferred, awaiting user confirmation
 - [ ] `internal-adaptation-backup` retained (safety net until confirmed stable)
 

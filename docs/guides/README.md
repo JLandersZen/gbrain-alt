@@ -23,6 +23,7 @@ Standalone guides broken out from the GBrain Skillpack. Each covers one pattern 
 
 - [Meeting Ingestion](meeting-ingestion.md) -- Turning transcripts into brain pages that update all mentioned entities
 - [Content and Media](content-media.md) -- Ingesting YouTube, social media, PDFs, and docs into brain pages
+- [Import Normalization](import-normalization.md) -- Cleaning Notion exports on import: type fixes, field renames, path resolution, relation extraction
 - [Diligence Ingestion](diligence-ingestion.md) -- Converting pitch decks and data rooms into cross-referenced pages
 - [Deterministic Collectors](deterministic-collectors.md) -- Separating reliable code tasks from probabilistic LLM judgment
 
@@ -42,5 +43,6 @@ Standalone guides broken out from the GBrain Skillpack. Each covers one pattern 
 ## Infrastructure
 
 - [Local-First Config](local-first-config.md) -- Project-scoped `.gbrain/` with walk-up discovery and global fallback
+- [Monorepo Sync](monorepo-sync.md) -- Using `--subdir` to scope sync to a brain directory within a larger repository
 - [Repo Architecture](repo-architecture.md) -- Two-repo separation of agent behavior from world knowledge
 - [Upgrades and Auto-Update](upgrades-auto-update.md) -- Conversational upgrade notifications and post-upgrade migration
