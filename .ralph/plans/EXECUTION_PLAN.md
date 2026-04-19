@@ -317,7 +317,7 @@ a202ab8  feat: extend parser to four-zone page structure
 - [x] Round-trip parse/render is lossless (tested in both markdown.test.ts and split-body-sentinel.test.ts)
 - [x] ALL existing markdown tests pass (with updated fixtures)
 - [x] New sentinel-specific tests pass (63 tests across 2 files)
-- [ ] Committed
+- [x] Committed (094d9a4)
 
 ### Conflict resolutions
 
@@ -326,6 +326,7 @@ a202ab8  feat: extend parser to four-zone page structure
 - **markdown.ts serializeMarkdown** — added optional `relationships?: string` parameter; emits `<!-- relationships -->` sentinel when present. Existing callers (cli.ts, export.ts) pass DB data which has no relationships column, so they pass `undefined` and behavior is unchanged.
 - **import-file.ts ParsedPage** — added `relationships: string` field, populated from `parseMarkdown` result
 - **split-body-sentinel.ts** — REMOVED. The pre-built sentinel parser from Slice 1 was integrated directly into `markdown.ts`. The test file (`test/split-body-sentinel.test.ts`) now imports from `markdown.ts`.
+- **DB schema unchanged** — `relationships` is derived data (generated from frontmatter relations during import), not a stored column. The DB `pages` table still has only `compiled_truth` and `timeline` columns.
 
 ### Risk mitigation
 
@@ -501,16 +502,16 @@ complete. Pushed to remote.
 
 ## Summary
 
-| Slice | What | Risk | Effort |
+| Slice | What | Risk | Status |
 |-------|------|------|--------|
-| 1 | Preparation + upstream study + pre-write parser | Low | 1–2 days |
-| 2 | Fresh branch + docs/infra commits | Low | < 1 day |
-| 3 | Taxonomy (PARA+GTD types) | Medium | 1–2 days |
-| 4 | Local-first config | Low | < 1 day |
-| 5 | Four-zone parser (sentinel rewrite) | **HIGH** | 2–3 days |
-| 6 | Normalize + relations pipeline | Medium | 2–3 days |
-| 7 | Sync --subdir + final commits | Medium | 1–2 days |
-| 8 | Validation + branch swap + push | Low | 1 day |
+| 1 | Preparation + upstream study + pre-write parser | Low | **DONE** (f34ff1a) |
+| 2 | Fresh branch + docs/infra commits | Low | **DONE** |
+| 3 | Taxonomy (PARA+GTD types) | Medium | **DONE** (859d50c) |
+| 4 | Local-first config | Low | **DONE** (cfed64e) |
+| 5 | Four-zone parser (sentinel rewrite) | **HIGH** | **DONE** (094d9a4) |
+| 6 | Normalize + relations pipeline | Medium | **NEXT** |
+| 7 | Sync --subdir + final commits | Medium | Open |
+| 8 | Validation + branch swap + push | Low | Open |
 
 **Total: ~10–14 days (2 sprints)**
 
