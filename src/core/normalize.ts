@@ -18,6 +18,7 @@ export interface NormalizeResult {
 export interface TitleMap {
   exact: Map<string, string>;
   loose: Map<string, string>;
+  bySlug: Map<string, string>;
 }
 
 const PLURAL_TO_SINGULAR: Record<string, PageType> = {
@@ -89,6 +90,7 @@ export function slugifyTitle(title: string): string {
 export function buildTitleMap(pages: { title: string; slug: string }[]): TitleMap {
   const exact = new Map<string, string>();
   const loose = new Map<string, string>();
+  const bySlug = new Map<string, string>();
   for (const { title, slug } of pages) {
     const lower = title.toLowerCase();
     const dir = slug.split('/')[0];
@@ -96,8 +98,9 @@ export function buildTitleMap(pages: { title: string; slug: string }[]): TitleMa
     if (!loose.has(lower)) {
       loose.set(lower, slug);
     }
+    bySlug.set(slug, title);
   }
-  return { exact, loose };
+  return { exact, loose, bySlug };
 }
 
 function resolveTitle(name: string, targetDir: string, titleMap: TitleMap): string {

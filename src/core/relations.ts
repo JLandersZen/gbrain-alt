@@ -1,4 +1,5 @@
 import type { BrainEngine } from './engine.ts';
+import type { TitleMap } from './normalize.ts';
 
 const FIELD_TO_LINK_TYPE: Record<string, string> = {
   assigned_projects: 'assigned_project',
@@ -121,4 +122,84 @@ export async function syncPageLinks(
   }
 
   return { added, removed };
+}
+
+const DISPLAY_LABELS: Record<string, string> = {
+  assigned_projects: 'Assigned Projects',
+  assigned_aors: 'Assigned AORs',
+  assigned_contexts: 'Assigned Contexts',
+  related_people: 'Related People',
+  related_events: 'Related Events',
+  related_resources: 'Related Resources',
+  related_tasks: 'Related Tasks',
+  related_projects: 'Related Projects',
+  related_interests: 'Related Interests',
+  organizations: 'Organizations',
+  people: 'People',
+  delegate: 'Delegate',
+  manager: 'Manager',
+  supers: 'Reports To',
+  subs: 'Direct Reports',
+  delegated_tasks: 'Delegated Tasks',
+  delegated_projects: 'Delegated Projects',
+  parent: 'Parent',
+};
+
+const RELATION_FIELDS_ORDER = [
+  'parent',
+  'assigned_contexts',
+  'assigned_aors',
+  'assigned_projects',
+  'organizations',
+  'people',
+  'related_people',
+  'related_projects',
+  'related_tasks',
+  'related_events',
+  'related_resources',
+  'related_interests',
+  'delegate',
+  'manager',
+  'supers',
+  'subs',
+  'delegated_tasks',
+  'delegated_projects',
+];
+
+function slugToTitle(slug: string, titleMap?: TitleMap): string {
+  if (titleMap?.bySlug.has(slug)) return titleMap.bySlug.get(slug)!;
+  const name = slug.includes('/') ? slug.split('/').pop()! : slug;
+  return name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function renderLink(slug: string, titleMap?: TitleMap): string {
+  const title = slugToTitle(slug, titleMap);
+  return `[${title}](${slug}.md)`;
+}
+
+export function renderRelationshipsZone(
+  frontmatter: Record<string, unknown>,
+  titleMap?: TitleMap,
+): string {
+  const fm = flattenLinksNesting(frontmatter);
+  const lines: string[] = ['## Relationships'];
+
+  for (const field of RELATION_FIELDS_ORDER) {
+    if (!(field in fm)) continue;
+    const raw = fm[field];
+    if (raw === null || raw === undefined || raw === '') continue;
+
+    const label = DISPLAY_LABELS[field] || field;
+    const slugs = typeof raw === 'string' ? [raw.trim()] : Array.isArray(raw)
+      ? raw.filter((v): v is string => typeof v === 'string' && v.trim() !== '').map(v => v.trim())
+      : [];
+
+    if (slugs.length === 0) continue;
+
+    const rendered = slugs.map(s => renderLink(s, titleMap)).join(', ');
+    lines.push(`- **${label}:** ${rendered}`);
+  }
+
+  if (lines.length <= 1) return '';
+  return lines.join('\n');
 }

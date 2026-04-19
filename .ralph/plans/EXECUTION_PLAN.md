@@ -365,26 +365,36 @@ pattern (>40 chars with 32-char hex sequence).
 - Stale links from previous import are removed when relations change ✅
 - `bun test` passes (700 tests, 0 failures) ✅
 
-### Slice 3c — Relationships Zone Generation
+### Slice 3c — Relationships Zone Generation ✅ DONE
 
-**Goal:** `gbrain sync` regenerates the relationships zone in the markdown file
-from frontmatter relation arrays. Titles are resolved from the database or target
-file frontmatter. The zone is placed between two `---` separators.
+**Completed:** 2026-04-18. All 716 tests pass (12 new renderRelationshipsZone tests + 3 new import-file integration tests). Beads: `gbrain-alt-3lm`.
+
+**Goal:** `gbrain import` generates a navigable relationships zone in each markdown
+file from frontmatter relation arrays. Titles resolved from `TitleMap` (built during
+pre-scan) or derived from slug. Zone placed between two `---` separators.
 
 **Files changed:**
 
 | File | Change |
 |------|--------|
-| `src/core/markdown.ts` or new `src/core/relations.ts` | `renderRelationshipsZone()` — frontmatter → markdown links |
-| `src/commands/sync.ts` | After import, write back file with regenerated relationships zone |
-| `src/core/import-file.ts` | Support writing relationships zone on import |
-| `test/markdown.test.ts` | Tests: relationships rendering, title resolution, roundtrip |
+| `src/core/relations.ts` | Added `renderRelationshipsZone()`: frontmatter → markdown links. Ordered field list, display labels, title resolution via `TitleMap.bySlug`, comma-separated multi-value rendering. Returns empty string when no relations exist. Also handles `links:` nesting via `flattenLinksNesting()`. |
+| `src/core/normalize.ts` | Extended `TitleMap` with `bySlug: Map<string, string>` for reverse lookup (slug → title). `buildTitleMap()` populates it. |
+| `src/core/import-file.ts` | `importFromFile()` now generates relationships zone and writes back to disk after successful import (when `titleMap` provided). Uses `serializeMarkdown()` for round-trip safety. Only writes when zone content differs from existing. |
+| `test/relations.test.ts` | 12 new tests: basic rendering, titleMap resolution, empty relations, empty arrays, single-valued fields, parent, multi-value comma join, `links:` nesting, null/undefined/empty skipping, field ordering, slug-derived title fallback, full round-trip. |
+| `test/import-file.test.ts` | 3 new tests: relationships zone write-back, no zone for pages without relations, no zone without titleMap. Updated existing "no normalization needed" test to account for relationship zone generation. |
 
-**Acceptance:**
-- Page with `related_people: [people/joe-landers]` gets relationships zone with `[Joe Landers](people/joe-landers.md)`
-- Page with no relations gets no relationships zone (two-zone format)
-- Sync writes back to file, git diff shows the generated zone
-- `bun test` passes
+**Design decisions:**
+- `renderRelationshipsZone()` lives in `relations.ts` (keeps all relation logic co-located).
+- Title resolution order: `TitleMap.bySlug` → slug-derived title (capitalize hyphen-separated words).
+- Relationships zone only written during `importFromFile` (file path available), not `importFromContent` (in-memory, no file to write back to).
+- Zone comparison uses trimmed content to avoid whitespace-only rewrites.
+- Field rendering follows a stable order (parent first, then assigned, then related, then delegation/hierarchy).
+
+**Acceptance:** ✅
+- Page with `related_people: [people/joe-landers]` gets zone with `[Joe Landers](people/joe-landers.md)` ✅
+- Page with no relations gets no relationships zone (two-zone format) ✅
+- Import writes back to file, git diff shows the generated zone ✅
+- `bun test` passes (716 tests, 0 failures) ✅
 
 ### Slice 3d — Reverse-Link Reconstruction
 
@@ -453,9 +463,9 @@ Slice 3b-pre  ─── Notion import data quality fixup ─── ✅
   │
 Slice 3b      ─── Frontmatter → links table ────────── ✅
   │
-Slice 3c      ─── Relationships zone generation ─────── ⬅ NEXT
+Slice 3c      ─── Relationships zone generation ─────── ✅
   │
-Slice 3d      ─── Reverse-link reconstruction ───────── 
+Slice 3d      ─── Reverse-link reconstruction ───────── ⬅ NEXT
   │
 Slice 3e      ─── Documentation + E2E validation ───── 
 ```

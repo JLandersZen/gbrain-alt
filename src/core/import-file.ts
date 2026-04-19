@@ -1,12 +1,12 @@
 import { readFileSync, writeFileSync, statSync, lstatSync } from 'fs';
 import { createHash } from 'crypto';
 import type { BrainEngine } from './engine.ts';
-import { parseMarkdown } from './markdown.ts';
+import { parseMarkdown, serializeMarkdown } from './markdown.ts';
 import { chunkText } from './chunkers/recursive.ts';
 import { embedBatch } from './embedding.ts';
 import { slugifyPath } from './sync.ts';
 import { normalizeContent, type TitleMap } from './normalize.ts';
-import { extractRelations, syncPageLinks } from './relations.ts';
+import { extractRelations, syncPageLinks, renderRelationshipsZone } from './relations.ts';
 import type { ChunkInput } from './types.ts';
 
 export interface ImportResult {
@@ -202,7 +202,23 @@ export async function importFromFile(
   // Pass the path-derived slug explicitly so that any future change to
   // parseMarkdown's precedence rules cannot re-introduce this bug.
   // titleMap already applied above — importFromContent's normalize pass is a no-op.
-  return importFromContent(engine, expectedSlug, content, opts);
+  const result = await importFromContent(engine, expectedSlug, content, opts);
+
+  if (result.status === 'imported' && opts.titleMap) {
+    const parsed = parseMarkdown(content, relativePath);
+    const zone = renderRelationshipsZone(parsed.frontmatter, opts.titleMap);
+    if (zone !== parsed.relationships.trim()) {
+      const updated = serializeMarkdown(
+        parsed.frontmatter,
+        parsed.compiled_truth,
+        parsed.timeline,
+        { type: parsed.type, title: parsed.title, tags: parsed.tags, relationships: zone },
+      );
+      writeFileSync(filePath, updated, 'utf-8');
+    }
+  }
+
+  return result;
 }
 
 // Backward compat

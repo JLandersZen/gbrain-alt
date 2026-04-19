@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test';
-import { extractRelations, flattenLinksNesting } from '../src/core/relations.ts';
+import { extractRelations, flattenLinksNesting, renderRelationshipsZone } from '../src/core/relations.ts';
+import { buildTitleMap } from '../src/core/normalize.ts';
 
 describe('flattenLinksNesting', () => {
   test('flattens links: nested keys to top level', () => {
@@ -241,5 +242,126 @@ describe('extractRelations', () => {
       targetSlug: 'interests/distributed-systems',
       linkType: 'related_interest',
     });
+  });
+});
+
+describe('renderRelationshipsZone', () => {
+  test('renders basic relations as markdown links', () => {
+    const fm = {
+      assigned_aors: ['aors/engineering-leadership'],
+      related_people: ['people/joe-landers'],
+    };
+    const result = renderRelationshipsZone(fm);
+    expect(result).toContain('## Relationships');
+    expect(result).toContain('- **Assigned AORs:** [Engineering Leadership](aors/engineering-leadership.md)');
+    expect(result).toContain('- **Related People:** [Joe Landers](people/joe-landers.md)');
+  });
+
+  test('resolves titles from titleMap', () => {
+    const titleMap = buildTitleMap([
+      { title: 'My Engineering AOR', slug: 'aors/engineering-leadership' },
+      { title: 'Joe Landers', slug: 'people/joe-landers' },
+    ]);
+    const fm = {
+      assigned_aors: ['aors/engineering-leadership'],
+      related_people: ['people/joe-landers'],
+    };
+    const result = renderRelationshipsZone(fm, titleMap);
+    expect(result).toContain('[My Engineering AOR](aors/engineering-leadership.md)');
+    expect(result).toContain('[Joe Landers](people/joe-landers.md)');
+  });
+
+  test('returns empty string when no relations exist', () => {
+    const fm = { type: 'resource', title: 'Plain', status: 'done' };
+    expect(renderRelationshipsZone(fm)).toBe('');
+  });
+
+  test('returns empty string when relation arrays are empty', () => {
+    const fm = { assigned_projects: [], related_people: [] };
+    expect(renderRelationshipsZone(fm)).toBe('');
+  });
+
+  test('handles single-valued fields (delegate, manager)', () => {
+    const fm = {
+      delegate: 'people/carol',
+      manager: 'people/jane',
+    };
+    const result = renderRelationshipsZone(fm);
+    expect(result).toContain('- **Delegate:** [Carol](people/carol.md)');
+    expect(result).toContain('- **Manager:** [Jane](people/jane.md)');
+  });
+
+  test('handles parent relation', () => {
+    const fm = { parent: 'projects/mega-project' };
+    const result = renderRelationshipsZone(fm);
+    expect(result).toContain('- **Parent:** [Mega Project](projects/mega-project.md)');
+  });
+
+  test('renders multiple values comma-separated', () => {
+    const fm = {
+      related_people: ['people/alice', 'people/bob', 'people/carol'],
+    };
+    const result = renderRelationshipsZone(fm);
+    expect(result).toContain('[Alice](people/alice.md), [Bob](people/bob.md), [Carol](people/carol.md)');
+  });
+
+  test('handles links: nesting from Notion export', () => {
+    const fm = {
+      links: {
+        assigned_projects: ['projects/alpha'],
+        related_people: ['people/bob'],
+      },
+    };
+    const result = renderRelationshipsZone(fm);
+    expect(result).toContain('[Alpha](projects/alpha.md)');
+    expect(result).toContain('[Bob](people/bob.md)');
+  });
+
+  test('skips null/undefined/empty string values', () => {
+    const fm = {
+      assigned_projects: null,
+      related_people: undefined,
+      delegate: '',
+      assigned_aors: ['aors/eng'],
+    };
+    const result = renderRelationshipsZone(fm);
+    expect(result).toContain('**Assigned AORs:**');
+    expect(result).not.toContain('Assigned Projects');
+    expect(result).not.toContain('Related People');
+    expect(result).not.toContain('Delegate');
+  });
+
+  test('preserves field ordering', () => {
+    const fm = {
+      related_people: ['people/alice'],
+      parent: 'projects/top',
+      assigned_contexts: ['contexts/work'],
+    };
+    const result = renderRelationshipsZone(fm);
+    const parentIdx = result.indexOf('Parent');
+    const contextIdx = result.indexOf('Assigned Contexts');
+    const peopleIdx = result.indexOf('Related People');
+    expect(parentIdx).toBeLessThan(contextIdx);
+    expect(contextIdx).toBeLessThan(peopleIdx);
+  });
+
+  test('falls back to slug-derived title when titleMap has no entry', () => {
+    const titleMap = buildTitleMap([]);
+    const fm = { related_people: ['people/unknown-person'] };
+    const result = renderRelationshipsZone(fm, titleMap);
+    expect(result).toContain('[Unknown Person](people/unknown-person.md)');
+  });
+
+  test('full round-trip: frontmatter → zone → parse matches original relations', () => {
+    const fm = {
+      assigned_aors: ['aors/engineering-leadership'],
+      assigned_projects: ['projects/gbrain-adaptation'],
+      related_people: ['people/joe-landers'],
+      parent: 'tasks/taxonomy-replacement',
+      delegate: 'people/someone',
+    };
+    const zone = renderRelationshipsZone(fm);
+    expect(zone).toContain('## Relationships');
+    expect(zone.split('\n').filter(l => l.startsWith('- **')).length).toBe(5);
   });
 });

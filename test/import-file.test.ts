@@ -521,12 +521,34 @@ Link to [Agentic Infrastructure](../Projects/Agentic%20Infrastructure%20abc12345
     expect(ondisk).not.toContain('abc12345def67890');
   });
 
-  test('does not rewrite file when no normalization needed', async () => {
+  test('does not rewrite file when no normalization needed and no relations', async () => {
+    const titleMap = buildTitleMap([]);
+
+    const filePath = join(TMP, 'already-clean.md');
+    const clean = `---
+type: task
+title: Already Clean Task
+---
+
+No normalization needed.
+`;
+    writeFileSync(filePath, clean);
+
+    const engine = mockEngine();
+    await importFile(engine, filePath, 'tasks/already-clean.md', {
+      noEmbed: true, titleMap,
+    });
+
+    const ondisk = readFileSync(filePath, 'utf-8');
+    expect(ondisk).toBe(clean);
+  });
+
+  test('adds relationships zone to file with existing relations', async () => {
     const titleMap = buildTitleMap([
       { title: 'Already Clean', slug: 'projects/already-clean' },
     ]);
 
-    const filePath = join(TMP, 'already-clean.md');
+    const filePath = join(TMP, 'already-clean-rel.md');
     const clean = `---
 type: task
 title: Already Clean Task
@@ -537,15 +559,15 @@ assigned_projects:
 No normalization needed.
 `;
     writeFileSync(filePath, clean);
-    const { mtimeMs: before } = Bun.file(filePath);
 
     const engine = mockEngine();
-    await importFile(engine, filePath, 'tasks/already-clean.md', {
+    await importFile(engine, filePath, 'tasks/already-clean-rel.md', {
       noEmbed: true, titleMap,
     });
 
     const ondisk = readFileSync(filePath, 'utf-8');
-    expect(ondisk).toBe(clean);
+    expect(ondisk).toContain('## Relationships');
+    expect(ondisk).toContain('[Already Clean](projects/already-clean.md)');
   });
 
   test('extracts frontmatter relations into addLink calls', async () => {
@@ -692,6 +714,91 @@ Just content, no relations.
     const calls = (engine as any)._calls;
     const linkCalls = calls.filter((c: any) => c.method === 'addLink');
     expect(linkCalls.length).toBe(0);
+  });
+
+  test('writes relationships zone back to disk during import', async () => {
+    const titleMap = buildTitleMap([
+      { title: 'Engineering Leadership', slug: 'aors/engineering-leadership' },
+      { title: 'Joe Landers', slug: 'people/joe-landers' },
+    ]);
+
+    const filePath = join(TMP, 'rel-zone.md');
+    const original = `---
+type: task
+title: Zone Test
+assigned_aors:
+  - aors/engineering-leadership
+related_people:
+  - people/joe-landers
+---
+
+Build the widget.
+
+---
+
+- 2026-04-18: Created
+`;
+    writeFileSync(filePath, original);
+
+    const engine = mockEngine();
+    const result = await importFile(engine, filePath, 'tasks/zone-test.md', {
+      noEmbed: true, titleMap,
+    });
+
+    expect(result.status).toBe('imported');
+
+    const ondisk = readFileSync(filePath, 'utf-8');
+    expect(ondisk).toContain('## Relationships');
+    expect(ondisk).toContain('[Engineering Leadership](aors/engineering-leadership.md)');
+    expect(ondisk).toContain('[Joe Landers](people/joe-landers.md)');
+    expect(ondisk).toContain('- 2026-04-18: Created');
+  });
+
+  test('does not write relationships zone when page has no relations', async () => {
+    const titleMap = buildTitleMap([]);
+
+    const filePath = join(TMP, 'no-rel-zone.md');
+    const original = `---
+type: resource
+title: No Relations
+status: done
+---
+
+Just content.
+
+---
+
+- 2026-01-01: Event
+`;
+    writeFileSync(filePath, original);
+
+    const engine = mockEngine();
+    await importFile(engine, filePath, 'resources/no-rel-zone.md', {
+      noEmbed: true, titleMap,
+    });
+
+    const ondisk = readFileSync(filePath, 'utf-8');
+    expect(ondisk).not.toContain('## Relationships');
+  });
+
+  test('does not write relationships zone without titleMap', async () => {
+    const filePath = join(TMP, 'no-titlemap-zone.md');
+    const original = `---
+type: task
+title: No TitleMap
+assigned_aors:
+  - aors/engineering
+---
+
+Content.
+`;
+    writeFileSync(filePath, original);
+
+    const engine = mockEngine();
+    await importFile(engine, filePath, 'tasks/no-titlemap-zone.md', { noEmbed: true });
+
+    const ondisk = readFileSync(filePath, 'utf-8');
+    expect(ondisk).toBe(original);
   });
 
   test('normalizes _events field rename during import with titleMap', async () => {
