@@ -527,7 +527,7 @@ complete. Pushed to remote.
 | 3 | Taxonomy (PARA+GTD types) | Medium | **DONE** (859d50c) |
 | 4 | Local-first config | Low | **DONE** (cfed64e) |
 | 5 | Four-zone parser (sentinel rewrite) | **HIGH** | **DONE** (094d9a4) |
-| 6 | Normalize + relations pipeline | Medium | **DONE** |
+| 6 | Normalize + relations pipeline | Medium | **DONE** (9e6ee18) |
 | 7 | Sync --subdir + final commits | Medium | **NEXT** |
 | 8 | Validation + branch swap + push | Low | Open |
 
@@ -535,19 +535,11 @@ complete. Pushed to remote.
 
 ---
 
-## Decision Points (Need Your Input During Execution)
+## Decision Points (RESOLVED)
 
-1. **Slice 5 (parser):** If upstream's heading-based heuristic (`## Timeline`)
-   conflicts with our relationship zone rendering, do we:
-   (a) require sentinels on all new pages and only use heuristics for legacy, or
-   (b) add a `## Relationships` heading heuristic too?
-
-2. **Slice 6 (HR normalization):** With sentinel-based parsing, the `---` → `***`
-   fix may be unnecessary. Drop it (simpler) or keep it (belt+suspenders)?
-
-3. **Slice 3 (upstream test types):** If upstream has tests using `company` that
-   pass because the DB column is unconstrained TEXT — leave them alone or
-   normalize them to `organization` for consistency?
+1. **Slice 5 (parser):** Resolved: (a) sentinels on new pages, heading heuristics for legacy only. Implemented in `splitBody()`.
+2. **Slice 6 (HR normalization):** Resolved: dropped. Sentinel-based parsing makes `---` → `***` unnecessary.
+3. **Slice 3 (upstream test types):** Resolved: left alone. DB column is unconstrained TEXT; upstream tests pass as-is.
 
 ---
 
