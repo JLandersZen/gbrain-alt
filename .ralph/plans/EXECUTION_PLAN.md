@@ -498,21 +498,25 @@ to the transaction and hook changes.
 **Delivers:** Full validation against spec's end-state criteria. Branch swap
 complete. Pushed to remote.
 
+**Prerequisite:** `git push origin internal-adaptation-v2` has not succeeded yet
+(SSH timeout to github.com during Slice 7 session). Retry before starting validation.
+
 ### Work
 
-1. **Full test suite:** `bun test` — record count, compare to baseline
-2. **E2E suite:** spin up test DB, run `bun run test:e2e`, tear down
-3. **Four-zone round-trip:** parse → serialize → parse on sample pages
-4. **Relations E2E:** import a page with frontmatter relations → verify links
+1. **Push pending commits:** `git push origin internal-adaptation-v2` (retry — Slice 7 commit 48120ba is local only)
+2. **Full test suite:** `bun test` — record count, compare to baseline
+3. **E2E suite:** spin up test DB (see CLAUDE.md §E2E test DB lifecycle), run `bun run test:e2e`, tear down
+4. **Four-zone round-trip:** parse → serialize → parse on sample pages
+5. **Relations E2E:** import a page with frontmatter relations → verify links
    table populated → verify relationships zone rendered
-5. **Normalize pipeline:** import a Notion export → verify type mapping,
+6. **Normalize pipeline:** import a Notion export → verify type mapping,
    field renames, path cleaning all fire
-6. **Sync --subdir:** `gbrain sync --subdir` on test data
-7. **Upstream features smoke-test:**
+7. **Sync --subdir:** `gbrain sync --subdir` on test data
+8. **Upstream features smoke-test:**
    - `gbrain graph-query` (knowledge graph)
    - `gbrain orphans` (orphan detection)
    - New engine methods work (getAllSlugs, addLinksBatch, etc.)
-8. **Branch swap:**
+9. **Branch swap:**
    - `git branch -m internal-adaptation internal-adaptation-old`
    - `git branch -m internal-adaptation-v2 internal-adaptation`
    - `git push --force-with-lease origin internal-adaptation`
@@ -543,7 +547,7 @@ complete. Pushed to remote.
 | 4 | Local-first config | Low | **DONE** (cfed64e) |
 | 5 | Four-zone parser (sentinel rewrite) | **HIGH** | **DONE** (094d9a4) |
 | 6 | Normalize + relations pipeline | Medium | **DONE** (9e6ee18) |
-| 7 | Sync --subdir + final commits | Medium | **DONE** |
+| 7 | Sync --subdir + final commits | Medium | **DONE** (48120ba) |
 | 8 | Validation + branch swap + push | Low | **NEXT** |
 
 **Total: ~10–14 days (2 sprints)**
