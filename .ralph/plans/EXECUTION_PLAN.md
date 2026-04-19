@@ -547,6 +547,11 @@ third sync is up_to_date).
 - [x] Normalize pipeline maps types correctly (tested via import-file.test.ts E2E cases)
 - [x] `gbrain sync --subdir` works with deadlock fix (source-level + E2E regression tests)
 - [x] Pushed to remote (`git push origin internal-adaptation-v2` — succeeded)
+- [x] Documentation: PARA+GTD taxonomy guide (docs/guides/page-types.md) — 9 types, inference rules, disambiguation, relation fields, database column behavior
+- [x] Updated guides README — fixed stale "Two-zone" description, added page-types guide link
+- [x] Updated docs/README.md — guide count 23 → 24
+- [ ] Documentation: import normalization pipeline guide — deferred to next session
+- [ ] Documentation: sync --subdir monorepo guide — deferred to next session
 - [ ] Branch swap (force-push to `internal-adaptation`) — deferred, awaiting user confirmation
 - [ ] `internal-adaptation-backup` retained (safety net until confirmed stable)
 

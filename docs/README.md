@@ -14,6 +14,6 @@
 - [Benchmarks](benchmarks/README.md) -- Reproducible search quality benchmark results
 - [Designs](designs/README.md) -- Product vision documents and design specs
 - [Ethos](ethos/README.md) -- Architecture philosophy essays explaining the "why" behind GBrain
-- [Guides](guides/README.md) -- 23 standalone guides covering patterns, workflows, and operational discipline
+- [Guides](guides/README.md) -- 24 standalone guides covering patterns, workflows, and operational discipline
 - [Integrations](integrations/README.md) -- Getting data in: integration recipes, credentials, and data flow
 - [MCP](mcp/README.md) -- Deploying and connecting the MCP server to AI clients

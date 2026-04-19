@@ -16,3 +16,6 @@ eval/reports/
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+
+# gbrain local brain
+.gbrain/

@@ -7,7 +7,8 @@ Standalone guides broken out from the GBrain Skillpack. Each covers one pattern 
 - [Brain-Agent Loop](brain-agent-loop.md) -- The read-write cycle that makes the brain compound daily
 - [Brain-First Lookup](brain-first-lookup.md) -- Always check the brain before calling external APIs
 - [Brain vs Memory](brain-vs-memory.md) -- When to store info in GBrain vs agent memory vs session context
-- [Compiled Truth + Timeline](compiled-truth.md) -- Two-zone page pattern: current synthesis above, append-only evidence below
+- [Four-Zone Page Structure](compiled-truth.md) -- Compiled truth + relationships + timeline with sentinel markers
+- [Page Types](page-types.md) -- The 9-type PARA+GTD taxonomy: context, aor, project, task, event, resource, interest, person, organization
 - [Entity Detection](entity-detection.md) -- Auto-scanning every message for entities and original thinking
 - [Source Attribution](source-attribution.md) -- Tracing every brain fact to who said it, when, and in what context
 
