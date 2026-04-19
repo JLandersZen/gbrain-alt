@@ -1,5 +1,5 @@
 // Page types
-export type PageType = 'person' | 'company' | 'deal' | 'yc' | 'civic' | 'project' | 'concept' | 'source' | 'media' | 'writing' | 'analysis' | 'guide' | 'hardware' | 'architecture';
+export type PageType = 'context' | 'aor' | 'project' | 'task' | 'event' | 'resource' | 'interest' | 'person' | 'organization';
 
 export interface Page {
   id: number;
@@ -166,9 +166,9 @@ export interface BrainHealth {
   missing_embeddings: number;
   /** Composite quality score (0-10). Computed from coverage, staleness, orphans. */
   brain_score: number;
-  /** Fraction of entity pages (person/company) with >= 1 inbound link. */
+  /** Fraction of entity pages (person/organization) with >= 1 inbound link. */
   link_coverage: number;
-  /** Fraction of entity pages (person/company) with >= 1 structured timeline entry. */
+  /** Fraction of entity pages (person/organization) with >= 1 structured timeline entry. */
   timeline_coverage: number;
   /** Top 5 entities by total link count (in + out). */
   most_connected: Array<{ slug: string; link_count: number }>;

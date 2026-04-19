@@ -263,22 +263,32 @@ Some content.`;
 
   test('infers type from various directory paths', () => {
     expect(parseMarkdown('', 'people/someone.md').type).toBe('person');
-    expect(parseMarkdown('', 'concepts/thing.md').type).toBe('concept');
-    expect(parseMarkdown('', 'companies/acme.md').type).toBe('company');
+    expect(parseMarkdown('', 'concepts/thing.md').type).toBe('interest');
+    expect(parseMarkdown('', 'companies/acme.md').type).toBe('organization');
   });
 
-  test('infers type from wiki subdirectory paths', () => {
-    expect(parseMarkdown('', 'tech/wiki/concepts/longevity-science.md').type).toBe('concept');
-    expect(parseMarkdown('', 'tech/wiki/guides/team-os-claude-code.md').type).toBe('guide');
-    expect(parseMarkdown('', 'tech/wiki/analysis/agi-timeline-debate.md').type).toBe('analysis');
-    expect(parseMarkdown('', 'tech/wiki/hardware/h100-vs-gb200-training-benchmarks.md').type).toBe('hardware');
-    expect(parseMarkdown('', 'tech/wiki/architecture/kb-infrastructure.md').type).toBe('architecture');
-    expect(parseMarkdown('', 'finance/wiki/analysis/polymarket-bot-automation-thesis.md').type).toBe('analysis');
-    expect(parseMarkdown('', 'personal/wiki/concepts/career-regrets-2026-framework.md').type).toBe('concept');
+  test('infers type from PARA+GTD directory paths', () => {
+    expect(parseMarkdown('', 'contexts/work.md').type).toBe('context');
+    expect(parseMarkdown('', 'aors/engineering.md').type).toBe('aor');
+    expect(parseMarkdown('', 'projects/gbrain.md').type).toBe('project');
+    expect(parseMarkdown('', 'tasks/review-pr.md').type).toBe('task');
+    expect(parseMarkdown('', 'events/team-standup.md').type).toBe('event');
+    expect(parseMarkdown('', 'resources/api-guide.md').type).toBe('resource');
+    expect(parseMarkdown('', 'interests/machine-learning.md').type).toBe('interest');
+    expect(parseMarkdown('', 'organizations/acme.md').type).toBe('organization');
   });
 
-  test('infers writing type from /writing/ paths', () => {
-    expect(parseMarkdown('', 'writing/post.md').type).toBe('writing');
-    expect(parseMarkdown('', 'projects/blog/writing/essay.md').type).toBe('writing');
+  test('infers type from legacy directory paths with PARA+GTD mapping', () => {
+    expect(parseMarkdown('', 'tech/wiki/concepts/longevity-science.md').type).toBe('resource');
+    expect(parseMarkdown('', 'tech/wiki/guides/team-os-claude-code.md').type).toBe('resource');
+    expect(parseMarkdown('', 'tech/wiki/analysis/agi-timeline-debate.md').type).toBe('resource');
+    expect(parseMarkdown('', 'tech/wiki/hardware/h100-vs-gb200-training-benchmarks.md').type).toBe('resource');
+    expect(parseMarkdown('', 'tech/wiki/architecture/kb-infrastructure.md').type).toBe('resource');
+    expect(parseMarkdown('', 'writing/post.md').type).toBe('resource');
+    expect(parseMarkdown('', 'projects/blog/writing/essay.md').type).toBe('resource');
+    expect(parseMarkdown('', 'sources/api-docs.md').type).toBe('resource');
+    expect(parseMarkdown('', 'media/podcast.md').type).toBe('resource');
+    expect(parseMarkdown('', 'deals/series-a.md').type).toBe('event');
+    expect(parseMarkdown('', 'meetings/standup.md').type).toBe('event');
   });
 });

@@ -142,7 +142,7 @@ describe('PGLiteEngine: Search', () => {
   beforeAll(async () => {
     await truncateAll();
     await engine.putPage('companies/novamind', {
-      type: 'company', title: 'NovaMind',
+      type: 'organization', title: 'NovaMind',
       compiled_truth: 'NovaMind builds AI agents for enterprise automation.',
     });
     await engine.upsertChunks('companies/novamind', [
@@ -251,8 +251,8 @@ describe('PGLiteEngine: Links', () => {
   beforeEach(async () => {
     await truncateAll();
     await engine.putPage('people/alice', { ...testPage, type: 'person', title: 'Alice' });
-    await engine.putPage('companies/acme', { ...testPage, type: 'company', title: 'ACME' });
-    await engine.putPage('companies/beta', { ...testPage, type: 'company', title: 'Beta' });
+    await engine.putPage('companies/acme', { ...testPage, type: 'organization', title: 'ACME' });
+    await engine.putPage('companies/beta', { ...testPage, type: 'organization', title: 'Beta' });
   });
 
   test('addLink + getLinks', async () => {
@@ -615,7 +615,7 @@ describe('PGLiteEngine: getAllSlugs', () => {
     await truncateAll();
     await engine.putPage('people/alice', { ...testPage, type: 'person', title: 'Alice' });
     await engine.putPage('people/bob', { ...testPage, type: 'person', title: 'Bob' });
-    await engine.putPage('companies/acme', { ...testPage, type: 'company', title: 'Acme' });
+    await engine.putPage('companies/acme', { ...testPage, type: 'organization', title: 'Acme' });
   });
 
   test('returns Set of all page slugs', async () => {
@@ -664,7 +664,7 @@ describe('PGLiteEngine: Multi-type links (v5 migration)', () => {
   beforeEach(async () => {
     await truncateAll();
     await engine.putPage('people/alice', { ...testPage, type: 'person', title: 'Alice' });
-    await engine.putPage('companies/acme', { ...testPage, type: 'company', title: 'Acme' });
+    await engine.putPage('companies/acme', { ...testPage, type: 'organization', title: 'Acme' });
   });
 
   test('same (from, to) with different link_types both stored', async () => {
@@ -743,7 +743,7 @@ describe('PGLiteEngine: getBacklinkCounts', () => {
     await truncateAll();
     await engine.putPage('people/alice', { ...testPage, type: 'person', title: 'Alice' });
     await engine.putPage('people/bob', { ...testPage, type: 'person', title: 'Bob' });
-    await engine.putPage('companies/acme', { ...testPage, type: 'company', title: 'Acme' });
+    await engine.putPage('companies/acme', { ...testPage, type: 'organization', title: 'Acme' });
   });
 
   test('returns Map<slug, count> for given slugs', async () => {
@@ -771,7 +771,7 @@ describe('PGLiteEngine: traversePaths (v0.10.1)', () => {
     await engine.putPage('people/alice', { ...testPage, type: 'person', title: 'Alice' });
     await engine.putPage('people/bob', { ...testPage, type: 'person', title: 'Bob' });
     await engine.putPage('people/carol', { ...testPage, type: 'person', title: 'Carol' });
-    await engine.putPage('companies/acme', { ...testPage, type: 'company', title: 'Acme' });
+    await engine.putPage('companies/acme', { ...testPage, type: 'organization', title: 'Acme' });
     await engine.putPage('meetings/standup', { ...testPage, type: 'meeting', title: 'Standup' });
     // Build a small typed graph
     await engine.addLink('meetings/standup', 'people/alice', '', 'attended');
@@ -849,7 +849,7 @@ describe('PGLiteEngine: getHealth graph metrics', () => {
     await truncateAll();
     await engine.putPage('people/alice', { ...testPage, type: 'person', title: 'Alice' });
     await engine.putPage('people/bob', { ...testPage, type: 'person', title: 'Bob' });
-    await engine.putPage('companies/acme', { ...testPage, type: 'company', title: 'Acme' });
+    await engine.putPage('companies/acme', { ...testPage, type: 'organization', title: 'Acme' });
   });
 
   test('link_coverage = 0 when no links exist', async () => {

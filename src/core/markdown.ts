@@ -147,29 +147,24 @@ export function serializeMarkdown(
 }
 
 function inferType(filePath?: string): PageType {
-  if (!filePath) return 'concept';
+  if (!filePath) return 'resource';
 
   // Normalize: add leading / for consistent matching.
-  // Wiki subtypes and /writing/ check FIRST — they're stronger signals than
-  // ancestor directories. e.g. `projects/blog/writing/essay.md` is a piece of
-  // writing, not a project page; `tech/wiki/analysis/foo.md` is analysis,
-  // not a hit on the broader `tech/` ancestor.
+  // Leaf-specific directories checked FIRST — they're stronger signals than
+  // ancestor directories. e.g. `projects/blog/writing/essay.md` is a resource
+  // (writing), not a project page.
   const lower = ('/' + filePath).toLowerCase();
-  if (lower.includes('/writing/')) return 'writing';
-  if (lower.includes('/wiki/analysis/')) return 'analysis';
-  if (lower.includes('/wiki/guides/') || lower.includes('/wiki/guide/')) return 'guide';
-  if (lower.includes('/wiki/hardware/')) return 'hardware';
-  if (lower.includes('/wiki/architecture/')) return 'architecture';
-  if (lower.includes('/wiki/concepts/') || lower.includes('/wiki/concept/')) return 'concept';
-  if (lower.includes('/people/') || lower.includes('/person/')) return 'person';
-  if (lower.includes('/companies/') || lower.includes('/company/')) return 'company';
-  if (lower.includes('/deals/') || lower.includes('/deal/')) return 'deal';
-  if (lower.includes('/yc/')) return 'yc';
-  if (lower.includes('/civic/')) return 'civic';
+  if (lower.includes('/writing/') || lower.includes('/wiki/') || lower.includes('/media/') || lower.includes('/sources/') || lower.includes('/source/')) return 'resource';
+  if (lower.includes('/contexts/')) return 'context';
+  if (lower.includes('/aors/')) return 'aor';
   if (lower.includes('/projects/') || lower.includes('/project/')) return 'project';
-  if (lower.includes('/sources/') || lower.includes('/source/')) return 'source';
-  if (lower.includes('/media/')) return 'media';
-  return 'concept';
+  if (lower.includes('/tasks/')) return 'task';
+  if (lower.includes('/events/') || lower.includes('/deals/') || lower.includes('/deal/') || lower.includes('/meetings/')) return 'event';
+  if (lower.includes('/resources/')) return 'resource';
+  if (lower.includes('/interests/') || lower.includes('/concepts/') || lower.includes('/concept/')) return 'interest';
+  if (lower.includes('/people/') || lower.includes('/person/')) return 'person';
+  if (lower.includes('/organizations/') || lower.includes('/companies/') || lower.includes('/company/')) return 'organization';
+  return 'resource';
 }
 
 function inferTitle(filePath?: string): string {

@@ -22,7 +22,7 @@ import { waitForCapacity } from './backoff.ts';
 
 export interface EnrichmentRequest {
   entityName: string;
-  entityType: 'person' | 'company';
+  entityType: 'person' | 'organization';
   context: string;
   sourceSlug: string;
   tier?: 1 | 2 | 3;
@@ -45,7 +45,7 @@ export interface EnrichmentResult {
 // ---------------------------------------------------------------------------
 
 /** Convert an entity name to a URL-safe slug. */
-export function slugifyEntity(name: string, type: 'person' | 'company'): string {
+export function slugifyEntity(name: string, type: 'person' | 'organization'): string {
   const slug = name
     .toLowerCase()
     .replace(/['']/g, '')
@@ -57,7 +57,7 @@ export function slugifyEntity(name: string, type: 'person' | 'company'): string 
 }
 
 /** Get the brain page path for an entity. */
-export function entityPagePath(name: string, type: 'person' | 'company'): string {
+export function entityPagePath(name: string, type: 'person' | 'organization'): string {
   return slugifyEntity(name, type);
 }
 
@@ -232,7 +232,7 @@ function suggestTier(
 }
 
 /** Generate stub content for a new entity page. */
-function generateStubContent(name: string, type: 'person' | 'company', context: string): string {
+function generateStubContent(name: string, type: 'person' | 'organization', context: string): string {
   if (type === 'person') {
     return `# ${name}\n\n**Type:** Person\n\n## Summary\n\n*Stub page. ${context}*\n\n## Timeline\n`;
   }
@@ -240,8 +240,8 @@ function generateStubContent(name: string, type: 'person' | 'company', context: 
 }
 
 /** Simple entity extraction from text using regex patterns. */
-export function extractEntities(text: string): Array<{ name: string; type: 'person' | 'company'; context: string }> {
-  const entities: Array<{ name: string; type: 'person' | 'company'; context: string }> = [];
+export function extractEntities(text: string): Array<{ name: string; type: 'person' | 'organization'; context: string }> {
+  const entities: Array<{ name: string; type: 'person' | 'organization'; context: string }> = [];
   const seen = new Set<string>();
 
   // Match capitalized multi-word names (likely people or companies)
@@ -255,7 +255,7 @@ export function extractEntities(text: string): Array<{ name: string; type: 'pers
 
     // Simple heuristics for type classification
     const isCompany = /Inc\b|Corp\b|Ltd\b|LLC\b|Co\b|Labs?\b|Tech\b|AI\b|Capital\b|Ventures?\b|Fund\b/i.test(name);
-    const type = isCompany ? 'company' : 'person';
+    const type = isCompany ? 'organization' : 'person';
 
     // Extract surrounding context (50 chars each side)
     const idx = match.index;

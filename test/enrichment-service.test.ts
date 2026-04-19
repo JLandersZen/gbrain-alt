@@ -47,8 +47,8 @@ describe('enrichment-service', () => {
       const entities = extractEntities('We visited Acme Corp and Beta Labs.');
       const acme = entities.find(e => e.name.includes('Acme'));
       const beta = entities.find(e => e.name.includes('Beta'));
-      expect(acme?.type).toBe('company');
-      expect(beta?.type).toBe('company');
+      expect(acme?.type).toBe('organization');
+      expect(beta?.type).toBe('organization');
     });
 
     test('classifies other multi-word names as person', () => {

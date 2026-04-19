@@ -291,7 +291,7 @@ const ADVISOR_ROLE_RE = /\b(?:full-time advisor|professional advisor|advises (?:
  * ("Her current board seats reflect her portfolio: [Co A], [Co B], [Co C]").
  */
 export function inferLinkType(pageType: PageType, context: string, globalContext?: string, targetSlug?: string): string {
-  if (pageType === 'media') {
+  if ((pageType as string) === 'media') {
     return 'mentions';
   }
   if ((pageType as string) === 'meeting') return 'attended';

@@ -38,7 +38,7 @@ interface BacklinkGap {
 export function extractEntityRefs(content: string, _pagePath: string): { name: string; slug: string; dir: string }[] {
   const refs = canonicalExtractEntityRefs(content);
   return refs
-    .filter(r => r.dir === 'people' || r.dir === 'companies')
+    .filter(r => r.dir === 'people' || r.dir === 'companies' || r.dir === 'organizations')
     .map(r => ({
       name: r.name,
       slug: r.slug.startsWith(`${r.dir}/`) ? r.slug.slice(r.dir.length + 1) : r.slug,
