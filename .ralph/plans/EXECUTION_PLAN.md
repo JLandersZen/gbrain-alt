@@ -555,6 +555,8 @@ third sync is up_to_date).
 - [x] Documentation: relations pipeline guide (docs/guides/relations-pipeline.md) — frontmatter fields, link types, sync behavior, reverse links, graph traversal, coexistence with auto-link
 - [x] Updated guides README — added relations-pipeline guide link, guide count now 28
 - [x] Updated docs/README.md — guide count 26 → 28
+- [x] Documentation: internal adaptations overview (docs/internal-adaptations.md) — single-page summary of all 6 customizations with links to detailed guides, upstream preservation notes, technical approach
+- [x] Updated docs/README.md — added internal-adaptations.md as top entry in Top-Level Docs
 - [ ] Branch swap (force-push to `internal-adaptation`) — deferred, awaiting user confirmation
 - [ ] `internal-adaptation-backup` retained (safety net until confirmed stable)
 

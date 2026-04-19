@@ -2,6 +2,7 @@
 
 ## Top-Level Docs
 
+- [Internal Adaptations](internal-adaptations.md) -- What this fork customizes from upstream and why (6 adaptations on v0.12.3)
 - [GBrain Skillpack](GBRAIN_SKILLPACK.md) -- Reference architecture and agent playbook for a production brain
 - [Recommended Schema](GBRAIN_RECOMMENDED_SCHEMA.md) -- MECE directory structure for your brain repo
 - [Installation Verification](GBRAIN_VERIFY.md) -- Post-install runbook to confirm everything works
