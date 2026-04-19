@@ -245,11 +245,18 @@ discovery logic. Should cherry-pick cleanly.
 
 ### Definition of Done
 
-- [ ] Walk-up config discovery works
-- [ ] No regressions in upstream commands
-- [ ] Committed
+- [x] Walk-up config discovery works (discoverConfigDir walks up from cwd, falls back to ~/.gbrain/)
+- [x] No regressions in upstream commands (1416 unit pass, 8 skip — 46 fail = DB-required E2E, unchanged)
+- [x] Committed (cfed64e)
 
-### Estimated effort: < 1 day
+### Conflict resolutions
+
+- **init.ts imports** — merged upstream's `copyFileSync`, `mkdirSync`, `dirname`, `fileURLToPath` (needed for template install + initMigrateOnly) with our `appendFileSync`, `writeFileSync`, `setConfigDir`, `globalConfigDir`, `configPath`
+- **init.ts initMigrateOnly** — kept upstream's function (uses `loadConfig` + `toEngineConfig` for migration orchestrators) which our cherry-pick lacked
+- **init.ts initPGLite** — kept our `isGlobal` parameter + `setConfigDir`/`globalConfigDir` target resolution
+- **upgrade.ts runPostUpgrade** — kept upstream's TS migration registry approach (imports `./migrations/index.ts`), replaced hardcoded `process.env.HOME + '/.gbrain/'` with `globalConfigDir()`
+
+### Estimated effort: < 1 day (completed in 1 session)
 
 ---
 
