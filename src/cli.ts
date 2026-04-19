@@ -1,12 +1,15 @@
 #!/usr/bin/env bun
 
 import { readFileSync } from 'fs';
+import { loadEnvFiles } from './core/env.ts';
 import { loadConfig, toEngineConfig } from './core/config.ts';
 import type { BrainEngine } from './core/engine.ts';
 import { operations, OperationError } from './core/operations.ts';
 import type { Operation, OperationContext } from './core/operations.ts';
 import { serializeMarkdown } from './core/markdown.ts';
 import { VERSION } from './version.ts';
+
+loadEnvFiles();
 
 // Build CLI name -> operation lookup
 const cliOps = new Map<string, Operation>();

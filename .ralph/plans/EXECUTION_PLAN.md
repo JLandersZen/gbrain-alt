@@ -399,14 +399,32 @@ Accept upstream's ParsedPage, add our fields/calls alongside.
 
 ### Definition of Done
 
-- [ ] Normalize pipeline works (type mapping, field renames, path cleaning)
-- [ ] Frontmatter → links extraction fires during import
-- [ ] Relationships zone rendered with sentinel on import
-- [ ] Reverse link reconstruction works
-- [ ] Upstream's ParsedPage interface preserved (auto-link hook still works)
-- [ ] Upstream's link-extraction.ts and our relations.ts coexist
-- [ ] All tests pass
+- [x] Normalize pipeline works (type mapping, field renames, path cleaning)
+- [x] Frontmatter → links extraction fires during import
+- [x] Relationships zone rendered with sentinel on import
+- [x] Reverse link reconstruction works
+- [x] Upstream's ParsedPage interface preserved (auto-link hook still works)
+- [x] Upstream's link-extraction.ts and our relations.ts coexist
+- [x] All tests pass (1526 unit pass, 13 skip, 47 E2E fail = DB-required, unchanged)
 - [ ] Committed
+
+### Conflict resolutions
+
+- **import-file.ts** — merged normalize and relations imports alongside upstream's ParsedPage interface. `importFromContent` accepts optional `titleMap` and runs `normalizeContent()` before parsing. `importFromFile` normalizes on disk (writes back), generates relationships zone with `renderRelationshipsZone()`, and writes sentinel-delimited zone. `extractRelations()` + `syncPageLinks()` fire inside the transaction block for link reconciliation.
+- **No cherry-picks used** — code written fresh on upstream's base, informed by the old branch's patterns. This was cleaner than cherry-picking 9 commits with cascading conflicts.
+- **ParsedPage preserved** — upstream's `parsedPage` return and auto-link hook still work unchanged.
+- **embed.ts** — added upfront `OPENAI_API_KEY` check to `runEmbed()` (CLI wrapper). `runEmbedCore()` (library API) unchanged.
+- **cli.ts** — added `loadEnvFiles()` import and call at bootstrap for .env auto-loading.
+- **env.ts** — new file: walk-up `.env` discovery, does NOT override existing env vars.
+- **embed.test.ts** — set `OPENAI_API_KEY` in beforeEach to avoid process.exit from new API key check.
+- **import-file.test.ts** — added `getLinks` to mock engine defaults; added 4 new integration tests (normalize on disk, relations extraction, zone rendering, in-memory normalize).
+
+### Implementation notes
+
+- All 9 original commits consolidated into a single implementation pass. The sentinel-based four-zone parser from Slice 5 is the foundation — `renderRelationshipsZone()` produces markdown that `serializeMarkdown()` wraps with `<!-- relationships -->` sentinel.
+- Frontmatter relations pipeline (normalize.ts → relations.ts → import-file.ts) coexists cleanly with upstream's content-based link extraction (link-extraction.ts → operations.ts auto-link hook). Both use `ON CONFLICT DO NOTHING` at the DB layer, so runtime duplicates are harmless.
+- Reverse link reconstruction (`reconstructReverseLinks`) is a pure function that doesn't touch the DB — it computes patches that the caller can apply to files on disk. This makes it safe for bulk import scenarios.
+- The `hr-separator` normalization rule (converting `---` to `***`) was dropped. With sentinel-based parsing (Slice 5), bare `---` is no longer a zone separator, making this fix unnecessary.
 
 ### Estimated effort: 2–3 days
 
@@ -509,8 +527,8 @@ complete. Pushed to remote.
 | 3 | Taxonomy (PARA+GTD types) | Medium | **DONE** (859d50c) |
 | 4 | Local-first config | Low | **DONE** (cfed64e) |
 | 5 | Four-zone parser (sentinel rewrite) | **HIGH** | **DONE** (094d9a4) |
-| 6 | Normalize + relations pipeline | Medium | **NEXT** |
-| 7 | Sync --subdir + final commits | Medium | Open |
+| 6 | Normalize + relations pipeline | Medium | **DONE** |
+| 7 | Sync --subdir + final commits | Medium | **NEXT** |
 | 8 | Validation + branch swap + push | Low | Open |
 
 **Total: ~10–14 days (2 sprints)**

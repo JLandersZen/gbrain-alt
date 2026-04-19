@@ -1,10 +1,12 @@
-import { readFileSync, statSync, lstatSync } from 'fs';
+import { readFileSync, writeFileSync, statSync, lstatSync } from 'fs';
 import { createHash } from 'crypto';
 import type { BrainEngine } from './engine.ts';
-import { parseMarkdown } from './markdown.ts';
+import { parseMarkdown, serializeMarkdown } from './markdown.ts';
 import { chunkText } from './chunkers/recursive.ts';
 import { embedBatch } from './embedding.ts';
 import { slugifyPath } from './sync.ts';
+import { normalizeContent, type TitleMap } from './normalize.ts';
+import { extractRelations, syncPageLinks, renderRelationshipsZone } from './relations.ts';
 import type { ChunkInput, PageType } from './types.ts';
 
 /**
@@ -54,7 +56,7 @@ export async function importFromContent(
   engine: BrainEngine,
   slug: string,
   content: string,
-  opts: { noEmbed?: boolean } = {},
+  opts: { noEmbed?: boolean; titleMap?: TitleMap } = {},
 ): Promise<ImportResult> {
   // Reject oversized payloads before any parsing, chunking, or embedding happens.
   // Uses Buffer.byteLength to count UTF-8 bytes the same way disk size would,
@@ -69,7 +71,15 @@ export async function importFromContent(
     };
   }
 
-  const parsed = parseMarkdown(content, slug + '.md');
+  // Normalize in-memory before parsing: resolves display-name relations to slug
+  // paths and cleans Notion paths. Idempotent — a second pass is a no-op.
+  let effectiveContent = content;
+  if (opts.titleMap) {
+    const { content: normalized, changed } = normalizeContent(content, slug + '.md', opts.titleMap);
+    if (changed) effectiveContent = normalized;
+  }
+
+  const parsed = parseMarkdown(effectiveContent, slug + '.md');
 
   // Hash includes ALL fields for idempotency (not just compiled_truth + timeline)
   const hash = createHash('sha256')
@@ -147,6 +157,12 @@ export async function importFromContent(
       await tx.addTag(slug, tag);
     }
 
+    // Link reconciliation: extract relations from frontmatter → upsert into links table
+    const relations = extractRelations(parsed.frontmatter, slug);
+    if (relations.length > 0 || existing) {
+      await syncPageLinks(tx, slug, relations);
+    }
+
     if (chunks.length > 0) {
       await tx.upsertChunks(slug, chunks);
     } else {
@@ -172,7 +188,7 @@ export async function importFromFile(
   engine: BrainEngine,
   filePath: string,
   relativePath: string,
-  opts: { noEmbed?: boolean } = {},
+  opts: { noEmbed?: boolean; titleMap?: TitleMap } = {},
 ): Promise<ImportResult> {
   // Defense-in-depth: reject symlinks before reading content.
   const lstat = lstatSync(filePath);
@@ -185,7 +201,17 @@ export async function importFromFile(
     return { slug: relativePath, status: 'skipped', chunks: 0, error: `File too large (${stat.size} bytes)` };
   }
 
-  const content = readFileSync(filePath, 'utf-8');
+  let content = readFileSync(filePath, 'utf-8');
+
+  // Normalize and write back to disk so the file (source of truth) matches the DB.
+  if (opts.titleMap) {
+    const { content: normalized, changed } = normalizeContent(content, relativePath, opts.titleMap);
+    if (changed) {
+      writeFileSync(filePath, normalized, 'utf-8');
+      content = normalized;
+    }
+  }
+
   const parsed = parseMarkdown(content, relativePath);
 
   // Enforce path-authoritative slug. parseMarkdown prefers frontmatter.slug over
@@ -201,6 +227,24 @@ export async function importFromFile(
         `Frontmatter slug "${parsed.slug}" does not match path-derived slug "${expectedSlug}" ` +
         `(from ${relativePath}). Remove the frontmatter "slug:" line or move the file.`,
     };
+  }
+
+  // Regenerate relationships zone regardless of import status — the file
+  // may already be in the DB (skipped) but still need its zone updated.
+  if (opts.titleMap) {
+    const freshParsed = parseMarkdown(content, relativePath);
+    const zone = renderRelationshipsZone(freshParsed.frontmatter, opts.titleMap);
+    if (zone !== freshParsed.relationships.trim()) {
+      const updated = serializeMarkdown(
+        freshParsed.frontmatter,
+        freshParsed.compiled_truth,
+        freshParsed.timeline,
+        { type: freshParsed.type, title: freshParsed.title, tags: freshParsed.tags },
+        zone,
+      );
+      writeFileSync(filePath, updated, 'utf-8');
+      content = updated;
+    }
   }
 
   // Pass the path-derived slug explicitly so that any future change to

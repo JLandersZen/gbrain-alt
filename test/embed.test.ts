@@ -43,14 +43,23 @@ function mockEngine(overrides: Partial<Record<string, any>> = {}): BrainEngine {
   return engine;
 }
 
+let savedApiKey: string | undefined;
+
 beforeEach(() => {
   activeEmbedCalls = 0;
   maxConcurrentEmbedCalls = 0;
   totalEmbedCalls = 0;
+  savedApiKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'sk-test-mock-key';
 });
 
 afterEach(() => {
   delete process.env.GBRAIN_EMBED_CONCURRENCY;
+  if (savedApiKey === undefined) {
+    delete process.env.OPENAI_API_KEY;
+  } else {
+    process.env.OPENAI_API_KEY = savedApiKey;
+  }
 });
 
 describe('runEmbed --all (parallel)', () => {

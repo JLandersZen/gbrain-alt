@@ -1,7 +1,8 @@
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
-import { writeFileSync, mkdirSync, rmSync, symlinkSync } from 'fs';
+import { writeFileSync, readFileSync, mkdirSync, rmSync, symlinkSync } from 'fs';
 import { join } from 'path';
 import { importFile, importFromContent } from '../src/core/import-file.ts';
+import { buildTitleMap } from '../src/core/normalize.ts';
 import type { BrainEngine } from '../src/core/engine.ts';
 
 const TMP = join(import.meta.dir, '.tmp-import-test');
@@ -20,6 +21,7 @@ function mockEngine(overrides: Partial<Record<string, any>> = {}): BrainEngine {
       if (prop === '_calls') return calls;
       if (prop === 'getTags') return overrides.getTags || (() => Promise.resolve([]));
       if (prop === 'getPage') return overrides.getPage || (() => Promise.resolve(null));
+      if (prop === 'getLinks') return overrides.getLinks || (() => Promise.resolve([]));
       // transaction: just call the fn with the same engine (no real DB transaction in tests)
       if (prop === 'transaction') return async (fn: (tx: BrainEngine) => Promise<any>) => fn(engine);
       return track(prop);
@@ -406,5 +408,115 @@ ${longText}
         expect(chunks[i].chunk_index).toBe(i);
       }
     }
+  });
+
+  test('normalizes content on disk when titleMap is provided', async () => {
+    const filePath = join(TMP, 'notion-task.md');
+    writeFileSync(filePath, `---
+type: tasks
+assigned_projects: Alpha Project
+title: Notion Task
+---
+
+Some content.
+`);
+
+    const titleMap = buildTitleMap([
+      { title: 'Alpha Project', slug: 'projects/alpha-project' },
+    ]);
+
+    const engine = mockEngine();
+    await importFile(engine, filePath, 'tasks/notion-task.md', { noEmbed: true, titleMap });
+
+    const onDisk = readFileSync(filePath, 'utf-8');
+    expect(onDisk).toContain('type: task');
+    expect(onDisk).not.toContain('type: tasks');
+    expect(onDisk).toContain('projects/alpha-project');
+  });
+
+  test('extracts frontmatter relations into links table on import', async () => {
+    const filePath = join(TMP, 'linked-task.md');
+    writeFileSync(filePath, `---
+type: task
+title: Linked Task
+assigned_projects:
+  - projects/alpha
+related_people:
+  - people/joe
+---
+
+Task content.
+`);
+
+    const engine = mockEngine({
+      getLinks: () => Promise.resolve([]),
+    });
+
+    await importFile(engine, filePath, 'tasks/linked-task.md', { noEmbed: true });
+
+    const calls = (engine as any)._calls;
+    const addLinkCalls = calls.filter((c: any) => c.method === 'addLink');
+    expect(addLinkCalls.length).toBe(2);
+
+    const linkTargets = addLinkCalls.map((c: any) => c.args[1]);
+    expect(linkTargets).toContain('projects/alpha');
+    expect(linkTargets).toContain('people/joe');
+  });
+
+  test('renders relationships zone on file import with titleMap', async () => {
+    const filePath = join(TMP, 'zone-task.md');
+    writeFileSync(filePath, `---
+type: task
+title: Zone Task
+assigned_aors:
+  - aors/engineering
+related_people:
+  - people/alice
+---
+
+Task content here.
+`);
+
+    const titleMap = buildTitleMap([
+      { title: 'Engineering', slug: 'aors/engineering' },
+      { title: 'Alice', slug: 'people/alice' },
+    ]);
+
+    const engine = mockEngine({
+      getLinks: () => Promise.resolve([]),
+    });
+
+    await importFile(engine, filePath, 'tasks/zone-task.md', { noEmbed: true, titleMap });
+
+    const onDisk = readFileSync(filePath, 'utf-8');
+    expect(onDisk).toContain('<!-- relationships -->');
+    expect(onDisk).toContain('## Relationships');
+    expect(onDisk).toContain('[Engineering](aors/engineering.md)');
+    expect(onDisk).toContain('[Alice](people/alice.md)');
+  });
+
+  test('importFromContent normalizes in-memory with titleMap', async () => {
+    const content = `---
+type: tasks
+assigned_projects: Alpha Project
+title: Memory Task
+---
+
+Content here.
+`;
+    const titleMap = buildTitleMap([
+      { title: 'Alpha Project', slug: 'projects/alpha-project' },
+    ]);
+
+    const engine = mockEngine({
+      getLinks: () => Promise.resolve([]),
+    });
+
+    const result = await importFromContent(engine, 'tasks/memory-task', content, { noEmbed: true, titleMap });
+    expect(result.status).toBe('imported');
+
+    const calls = (engine as any)._calls;
+    const putCall = calls.find((c: any) => c.method === 'putPage');
+    expect(putCall.args[1].type).toBe('task');
   });
 });

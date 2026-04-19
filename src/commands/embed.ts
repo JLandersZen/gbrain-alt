@@ -40,6 +40,16 @@ export async function runEmbedCore(engine: BrainEngine, opts: EmbedOpts): Promis
 }
 
 export async function runEmbed(engine: BrainEngine, args: string[]) {
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('Error: OPENAI_API_KEY is not set. Embeddings require an OpenAI API key.');
+    console.error('');
+    console.error('Set it in your environment:');
+    console.error('  export OPENAI_API_KEY=sk-...');
+    console.error('');
+    console.error('Or add it to a .env file in your project root (next to .gbrain/).');
+    process.exit(1);
+  }
+
   const slugsIdx = args.indexOf('--slugs');
   const all = args.includes('--all');
   const stale = args.includes('--stale');
