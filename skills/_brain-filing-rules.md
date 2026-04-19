@@ -52,7 +52,13 @@ Every mention of a person or organization with a brain page MUST create a back-l
 FROM that entity's page TO the page mentioning them. This is bidirectional:
 the new page links to the entity, AND the entity's page links back.
 
-Format for back-links (append to Timeline or See Also):
+**Primary mechanism:** Add slug paths to frontmatter relation arrays (e.g.,
+`related_people: [people/alice]`). On `gbrain sync` or `gbrain import`, the
+relationships zone regenerates automatically with clickable markdown links, and
+reverse relations are reconstructed on the target page's frontmatter.
+
+**Fallback for timeline mentions:** If a person/org is mentioned in a timeline
+entry but not in frontmatter relations, append a back-link to their timeline:
 ```
 - **YYYY-MM-DD** | Referenced in [page title](path/to/page.md) -- brief context
 ```

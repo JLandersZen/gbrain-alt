@@ -10,7 +10,11 @@ default; use `--global` for the old `~/.gbrain/` behavior. Suggests Supabase for
 Contract-first: `src/core/operations.ts` defines ~30 shared operations. CLI and MCP
 server are both generated from this single source. Engine factory (`src/core/engine-factory.ts`)
 dynamically imports the configured engine (`'pglite'` or `'postgres'`). Skills are fat
-markdown files (tool-agnostic, work with both CLI and plugin contexts).
+markdown files (tool-agnostic, work with both CLI and plugin contexts). Pages use a
+four-zone structure: frontmatter (YAML metadata + relation arrays), compiled truth
+(current synthesis), relationships zone (auto-generated clickable links), and timeline
+(append-only evidence). The relationships zone is generated from frontmatter by
+`renderRelationshipsZone()` — pages without relations use the classic two-zone format.
 
 ## Key files
 
@@ -110,6 +114,7 @@ parity), `test/cli.test.ts` (CLI structure), `test/config.test.ts` (config redac
 
 E2E tests (`test/e2e/`): Run against real Postgres+pgvector. Require `DATABASE_URL`.
 - `bun run test:e2e` runs Tier 1 (mechanical, all operations, no API keys)
+- `test/e2e/relations-pipeline.test.ts` runs full relations pipeline E2E (import→links→zone→reverse links)
 - `test/e2e/search-quality.test.ts` runs search quality E2E against PGLite (no API keys, in-memory)
 - `test/e2e/upgrade.test.ts` runs check-update E2E against real GitHub API (network required)
 - Tier 2 (`skills.test.ts`) requires OpenClaw + API keys, runs nightly in CI

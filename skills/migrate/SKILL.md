@@ -75,7 +75,15 @@ Obsidian-specific:
    They may be genuine duplicates worth merging. Check page content and
    properties to decide.
 7. Import the cleaned directory into gbrain. Output to `brain/` at the
-   project root.
+   project root: `gbrain import brain/ --no-embed`
+8. **Reverse-link reconstruction.** Notion exports are one-sided — if Task A
+   references Project X, Project X does NOT list Task A. The import pipeline
+   automatically reconstructs reverse relations (e.g., adds `tasks: [tasks/a]`
+   to Project X's frontmatter). This happens in the post-import pass.
+9. **Relationships zone.** After import, each page with frontmatter relations
+   gets a `## Relationships` zone with clickable markdown links. This is
+   auto-generated — do not hand-edit it. Run `gbrain embed --stale` after
+   verifying the import looks correct.
 
 ## CSV Migration
 
