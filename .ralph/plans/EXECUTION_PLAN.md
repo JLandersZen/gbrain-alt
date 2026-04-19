@@ -137,12 +137,28 @@ f636e0f  chore: archive completed plan/spec
 
 ### Definition of Done
 
-- [ ] `internal-adaptation-v2` exists, based on `origin/master`
-- [ ] All docs/infra commits applied
-- [ ] `bun test` passes (upstream's full suite, untouched)
-- [ ] Committed
+- [x] `internal-adaptation-v2` exists, based on `origin/master`
+- [x] All docs/infra commits applied (7 cherry-picked, 7 planning-only skipped — superseded by f34ff1a)
+- [x] `bun test` passes (1413 pass, 8 skip, 40 E2E-only fail — matches baseline + 32 sentinel tests)
+- [x] Committed (8 commits on internal-adaptation-v2)
 
-### Estimated effort: < 1 day
+### Conflict resolutions
+
+- `.gitignore` — kept upstream's `eval/reports/` + our `.dolt/` + `*.db`
+- `CLAUDE.md` intro — kept upstream's GStack branding + our local-first `.gbrain/` config note
+- `CLAUDE.md` key files — kept upstream's detailed descriptions, added our `config.ts` line
+- `README.md` — kept upstream's full content, our `.gbrain/` path fixes applied in setup section
+- `skills/migrate/SKILL.md` — kept upstream's section structure, added our Prerequisites section
+- `.ralph/plans/` — took f34ff1a's fresh rebase planning docs (supersedes all intermediate edits)
+
+### Skipped commits (planning-docs-only, superseded by f34ff1a)
+
+32291d1, d20008e, 43a0977, 903c7ad, b8ca726, 3128a1c, 29dd1c7 — all only modified
+`.ralph/plans/EXECUTION_PLAN.md` or `SPECIFICATION.md`. f34ff1a creates the fresh
+rebase version of both files. 7490bd6 (archive old plan/spec) also skipped — those
+old files don't exist on this branch.
+
+### Estimated effort: < 1 day (completed)
 
 ---
 
