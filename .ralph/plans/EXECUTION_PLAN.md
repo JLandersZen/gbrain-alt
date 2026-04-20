@@ -535,9 +535,16 @@ regression tests verify. Updated the E2E idempotency test to account for zone
 generation (first sync modifies files → commit → second sync sees those commits →
 third sync is up_to_date).
 
+**Bug 3: Subprocess tests break under local-first config discovery.** The Slice 4
+`discoverConfigDir()` walks from `process.cwd()` (repo root) and finds
+`.gbrain/config.json` in the repo, bypassing test isolation that only set `HOME=tmp`.
+Fix: added `cwd: tmp` to subprocess invocations in `skillpack-check.test.ts`,
+`init-migrate-only.test.ts`, and `doctor-minions-check.test.ts` so walk-up discovery
+starts in the temp dir. 6 tests recovered (1547→1558 unit pass).
+
 ### Definition of Done (spec §Post-rebase validation)
 
-- [x] `bun test` green (1552 unit pass, 8 skip; 48 E2E-only fail = DB-required, unchanged pattern)
+- [x] `bun test` green (1558 unit pass, 8 skip; 42 E2E-only fail = DB-required, unchanged pattern)
 - [x] `bun run test:e2e` green (148 pass, 8 skip, 0 fail — up from 146/2)
 - [x] Four-zone round-trip: parse → serialize → parse = identical (tested in markdown.test.ts + split-body-sentinel.test.ts)
 - [x] Relations extraction works end-to-end (17 E2E tests in relations-pipeline.test.ts)

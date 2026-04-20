@@ -33,6 +33,7 @@ function run(args: string[]): { exitCode: number; stdout: string; stderr: string
   try {
     const stdout = execFileSync('bun', ['run', CLI, ...args], {
       env: env as Record<string, string>,
+      cwd: tmp,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
