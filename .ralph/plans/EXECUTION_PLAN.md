@@ -498,12 +498,9 @@ to the transaction and hook changes.
 **Delivers:** Full validation against spec's end-state criteria. Branch swap
 complete. Pushed to remote.
 
-**Prerequisite:** `git push origin internal-adaptation-v2` has not succeeded yet
-(SSH timeout to github.com during Slice 7 session). Retry before starting validation.
-
 ### Work
 
-1. **Push pending commits:** `git push origin internal-adaptation-v2` (retry — Slice 7 commit 48120ba is local only)
+1. ~~**Push pending commits:**~~ DONE — all commits pushed to `origin/internal-adaptation-v2`
 2. **Full test suite:** `bun test` — record count, compare to baseline
 3. **E2E suite:** spin up test DB (see CLAUDE.md §E2E test DB lifecycle), run `bun run test:e2e`, tear down
 4. **Four-zone round-trip:** parse → serialize → parse on sample pages
@@ -575,7 +572,7 @@ third sync is up_to_date).
 | 5 | Four-zone parser (sentinel rewrite) | **HIGH** | **DONE** (094d9a4) |
 | 6 | Normalize + relations pipeline | Medium | **DONE** (9e6ee18) |
 | 7 | Sync --subdir + final commits | Medium | **DONE** (48120ba) |
-| 8 | Validation + branch swap + push | Low | **BLOCKED on user confirmation** — validation passed (1552 unit, 148 E2E), bugs fixed, 6 docs written, `internal-adaptation-v2` pushed to remote. Only branch swap remains: `git branch -m internal-adaptation internal-adaptation-old && git branch -m internal-adaptation-v2 internal-adaptation && git push --force-with-lease origin internal-adaptation`. Then archive plan+spec to `.ralph/plans/archive/`. See beads `gbrain-alt-ckn`. |
+| 8 | Validation + branch swap + push | Low | **AWAITING USER CONFIRMATION** — all code/tests/docs done and pushed. Only the branch swap remains (destructive force-push). See beads `gbrain-alt-ckn`. |
 
 **Total: ~10–14 days (2 sprints)**
 
